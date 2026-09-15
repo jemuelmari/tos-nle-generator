@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TOS + NLE Question Generator</title>
-  <meta name="description" content="Generate CHED & NLE-aligned Tables of Specifications and exams with Bloom's Taxonomy." />
+  <title>TOS Generator — TSU College of Science</title>
+  <meta name="description" content="Generate CHED & NLE-aligned Tables of Specifications with Bloom's Taxonomy. Export .docx or copy as a DeepSeek prompt." />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -32,8 +32,8 @@
     </div>
     <div class="brand-text">
       <h1>
-        TOS + NLE Generator
-        <span class="version-badge" title="App version">v1.2.0</span>
+        TOS Generator
+        <span class="version-badge" title="App version">v2.0.0</span>
       </h1>
       <p class="subtitle">
         <span class="dot"></span>
@@ -129,9 +129,6 @@
   <button class="tab" data-tab="tos">
     <i data-lucide="table-2"></i><span>TOS</span>
   </button>
-  <button class="tab" data-tab="questions">
-    <i data-lucide="help-circle"></i><span>Questions</span>
-  </button>
   <button class="tab" data-tab="export">
     <i data-lucide="download"></i><span>Export</span>
   </button>
@@ -145,7 +142,7 @@
         <h2>Course Setup</h2>
         <p class="hint">Enter subject details and coverage areas. Percentages auto-compute.</p>
       </div>
-      <span class="chip chip-primary">Step 1 of 5</span>
+      <span class="chip chip-primary">Step 1 of 4</span>
     </div>
 
     <div class="card">
@@ -239,7 +236,7 @@
         <h2>Bloom's Distribution</h2>
         <p class="hint">Default: 30% lower-order · 70% higher-order. Sliders must total 100%.</p>
       </div>
-      <span class="chip chip-primary">Step 2 of 5</span>
+      <span class="chip chip-primary">Step 2 of 4</span>
     </div>
 
     <div class="card">
@@ -275,14 +272,17 @@
     <div class="panel-head">
       <div>
         <h2>Table of Specifications</h2>
-        <p class="hint">Auto-generated from Setup + Bloom's. Review and adjust before generating questions.</p>
+        <p class="hint">Auto-generated from Setup + Bloom's. Review before exporting.</p>
       </div>
-      <span class="chip chip-primary">Step 3 of 5</span>
+      <span class="chip chip-primary">Step 3 of 4</span>
     </div>
 
     <div class="action-bar">
       <button id="btn-recompute-tos" class="btn btn-primary">
         <i data-lucide="refresh-cw"></i> Recompute TOS
+      </button>
+      <button id="btn-copy-prompt" class="btn btn-secondary">
+        <i data-lucide="clipboard-copy"></i> Copy TOS as DeepSeek Prompt
       </button>
       <button id="btn-export-tos-docx" class="btn btn-secondary">
         <i data-lucide="file-text"></i> Export .docx
@@ -296,89 +296,39 @@
     <div id="tos-warnings" class="alerts"></div>
   </section>
 
-  <section id="tab-questions" class="tab-panel">
-    <div class="panel-head">
-      <div>
-        <h2>Question Generation</h2>
-        <p class="hint">Generate template-based or AI-powered NLE-style items for each TOS slot.</p>
-      </div>
-      <span class="chip chip-primary">Step 4 of 5</span>
-    </div>
-
-    <div class="card action-card">
-      <div class="action-bar">
-        <button id="btn-generate-all-template" class="btn btn-primary">
-          <i data-lucide="zap"></i> Generate All (Template)
-        </button>
-        <button id="btn-generate-all-ai" class="btn btn-secondary">
-          <i data-lucide="sparkles"></i> Generate All (AI)
-        </button>
-        <button id="btn-clear-questions" class="btn btn-ghost">
-          <i data-lucide="trash-2"></i> Clear
-        </button>
-
-        <label class="switch">
-          <input type="checkbox" id="toggle-ai" />
-          <span class="switch-slider"></span>
-          <span class="switch-label">AI Mode</span>
-        </label>
-      </div>
-
-      <div id="ai-config" class="ai-config" hidden>
-        <div class="field">
-          <label for="ai-provider">Provider</label>
-          <select id="ai-provider">
-            <option value="gemini">Google Gemini</option>
-            <option value="openai">OpenAI</option>
-          </select>
-        </div>
-        <div class="field">
-          <label for="ai-key">API Key</label>
-          <input type="password" id="ai-key" placeholder="Stored locally only" />
-        </div>
-        <div class="field">
-          <label for="ai-model">Model</label>
-          <select id="ai-model"></select>
-        </div>
-      </div>
-    </div>
-
-    <div id="questions-container" class="questions-container"></div>
-  </section>
-
   <section id="tab-export" class="tab-panel">
     <div class="panel-head">
       <div>
         <h2>Export</h2>
-        <p class="hint">Download your TOS, exam paper, and answer key — ready to print or share.</p>
+        <p class="hint">Download your TOS, or copy the master prompt to generate questions with DeepSeek.</p>
       </div>
-      <span class="chip chip-primary">Step 5 of 5</span>
+      <span class="chip chip-primary">Step 4 of 4</span>
     </div>
 
     <div class="export-grid">
       <div class="export-card">
         <div class="export-icon"><i data-lucide="clipboard-list"></i></div>
-        <h3>Table of Specifications</h3>
-        <p>Coverage, hours, Bloom's distribution, item placement, and signatories.</p>
+        <h3>Table of Specifications (.docx)</h3>
+        <p>Formatted TOS with coverage, hours, Bloom's distribution, item placement, and signatories.</p>
         <button id="btn-export-tos" class="btn btn-primary btn-block">
           <i data-lucide="download"></i> Download .docx
         </button>
       </div>
 
       <div class="export-card">
-        <div class="export-icon"><i data-lucide="file-edit"></i></div>
-        <h3>Exam Paper</h3>
-        <p>Header, directions, numbered items, end-of-exam marker, signatory block.</p>
-        <button id="btn-export-exam" class="btn btn-primary btn-block">
-          <i data-lucide="download"></i> Download .docx
+        <div class="export-icon"><i data-lucide="clipboard-copy"></i></div>
+        <h3>DeepSeek Master Prompt</h3>
+        <p>Pre-filled prompt — paste into DeepSeek to generate NLE-aligned test questions matching your TOS.</p>
+        <button id="btn-copy-prompt-2" class="btn btn-secondary btn-block">
+          <i data-lucide="copy"></i> Copy Prompt
         </button>
       </div>
 
       <div class="export-card">
-        <div class="export-icon"><i data-lucide="check-circle-2"></i></div>
-        <h3>Answer Key + Rationales</h3>
-        <p>Correct answer, Bloom's level, CHED/NLE tags, and full rationale per item.</p>
-        <button id="btn-export-answerkey" class="btn btn-primary btn-block">
+        <div class="export-icon"><i data-lucide="file-edit"></i></div>
+        <h3>Blank Exam Shell (.docx)</h3>
+        <p>Exam header, directions, student info block, and signatories — paste your questions inside.</p>
+        <button id="btn-export-exam-shell" class="btn btn-primary btn-block">
           <i data-lucide="download"></i> Download .docx
         </button>
       </div>
@@ -400,7 +350,7 @@
 
 <footer class="app-footer">
   <div class="footer-left">
-    <span class="version-pill">v1.2.0</span>
+    <span class="version-pill">v2.0.0</span>
     <span>Built for nursing educators</span>
   </div>
   <div class="footer-right">
@@ -408,22 +358,40 @@
   </div>
 </footer>
 
-<div class="progress-overlay" id="progress-overlay" hidden>
-  <div class="progress-card">
-    <div class="progress-spinner">
-      <svg viewBox="0 0 50 50">
-        <circle class="spinner-ring" cx="25" cy="25" r="20" />
-        <circle class="spinner-fill" cx="25" cy="25" r="20" id="progress-circle" />
-      </svg>
-      <div class="progress-percent" id="progress-percent">0%</div>
+<!-- Prompt Preview Modal -->
+<div class="modal-overlay" id="prompt-modal" hidden>
+  <div class="modal-card modal-card-wide">
+    <button class="modal-close" id="btn-close-prompt" aria-label="Close">
+      <i data-lucide="x"></i>
+    </button>
+    <div class="modal-hero">
+      <div class="modal-hero-icon">
+        <i data-lucide="clipboard-copy"></i>
+      </div>
+      <h2>DeepSeek Master Prompt</h2>
+      <p>Pre-filled with your TOS. Paste this into DeepSeek to generate your test questions.</p>
     </div>
-    <div class="progress-title">Generating Questions with AI</div>
-    <div class="progress-sub" id="progress-sub">Preparing…</div>
-    <div class="progress-detail" id="progress-detail">Item 0 of 50</div>
-    <button class="btn btn-ghost btn-sm" id="btn-cancel-ai">Cancel</button>
+
+    <textarea id="prompt-textarea" class="prompt-textarea" readonly></textarea>
+
+    <div class="modal-actions">
+      <div class="modal-info">
+        <i data-lucide="info"></i>
+        <span>For 50+ items, split into batches of 10–15 to avoid token limits.</span>
+      </div>
+      <div class="modal-buttons">
+        <button class="btn btn-ghost" id="btn-prompt-download">
+          <i data-lucide="download"></i> Download .txt
+        </button>
+        <button class="btn btn-primary" id="btn-prompt-copy">
+          <i data-lucide="copy"></i> Copy to Clipboard
+        </button>
+      </div>
+    </div>
   </div>
 </div>
 
+<!-- Welcome Modal -->
 <div class="modal-overlay" id="welcome-modal" hidden>
   <div class="modal-card">
     <button class="modal-close" id="btn-close-welcome" aria-label="Close">
@@ -433,17 +401,40 @@
       <div class="modal-hero-icon">
         <i data-lucide="sparkles"></i>
       </div>
-      <h2>Welcome to TOS + NLE Generator</h2>
-      <p>Generate CHED &amp; NLE-aligned Tables of Specifications and exams in five guided steps.</p>
-      <span class="modal-version">v1.2.0</span>
+      <h2>Welcome to TOS Generator</h2>
+      <p>Build CHED &amp; NLE-aligned Tables of Specifications in four simple steps — then generate questions with DeepSeek.</p>
+      <span class="modal-version">v2.0.0</span>
     </div>
 
     <div class="modal-steps">
-      <div class="modal-step"><div class="step-num">1</div><div><div class="step-title">Setup</div><div class="step-desc">Enter subject, term, hours, items, and coverage areas.</div></div></div>
-      <div class="modal-step"><div class="step-num">2</div><div><div class="step-title">Bloom's</div><div class="step-desc">Adjust the 6 cognitive levels (default 30/70 split).</div></div></div>
-      <div class="modal-step"><div class="step-num">3</div><div><div class="step-title">TOS</div><div class="step-desc">Review the auto-generated Table of Specifications.</div></div></div>
-      <div class="modal-step"><div class="step-num">4</div><div><div class="step-title">Questions</div><div class="step-desc">Generate items — template mode or AI mode.</div></div></div>
-      <div class="modal-step"><div class="step-num">5</div><div><div class="step-title">Export</div><div class="step-desc">Download TOS, Exam, and Answer Key as .docx.</div></div></div>
+      <div class="modal-step">
+        <div class="step-num">1</div>
+        <div>
+          <div class="step-title">Setup</div>
+          <div class="step-desc">Enter subject, term, hours, items, and coverage areas.</div>
+        </div>
+      </div>
+      <div class="modal-step">
+        <div class="step-num">2</div>
+        <div>
+          <div class="step-title">Bloom's</div>
+          <div class="step-desc">Adjust the 6 cognitive levels (default 30/70 split).</div>
+        </div>
+      </div>
+      <div class="modal-step">
+        <div class="step-num">3</div>
+        <div>
+          <div class="step-title">TOS</div>
+          <div class="step-desc">Review the auto-generated Table of Specifications.</div>
+        </div>
+      </div>
+      <div class="modal-step">
+        <div class="step-num">4</div>
+        <div>
+          <div class="step-title">Export</div>
+          <div class="step-desc">Download TOS or copy the master prompt for DeepSeek.</div>
+        </div>
+      </div>
     </div>
 
     <div class="modal-actions">
