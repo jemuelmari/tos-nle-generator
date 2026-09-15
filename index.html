@@ -27,12 +27,13 @@
 <header class="app-header">
   <div class="brand">
     <div class="brand-mark">
-      <i data-lucide="clipboard-list"></i>
+      <img src="assets/logo.png" alt="College of Science Logo" onerror="this.style.display='none';this.nextElementSibling.style.display='grid';" />
+      <i data-lucide="clipboard-list" style="display:none"></i>
     </div>
     <div class="brand-text">
       <h1>
         TOS + NLE Generator
-        <span class="version-badge" title="App version">v1.1.0</span>
+        <span class="version-badge" title="App version">v1.2.0</span>
       </h1>
       <p class="subtitle">
         <span class="dot"></span>
@@ -325,19 +326,19 @@
 
       <div id="ai-config" class="ai-config" hidden>
         <div class="field">
-          <label>Provider</label>
+          <label for="ai-provider">Provider</label>
           <select id="ai-provider">
             <option value="gemini">Google Gemini</option>
             <option value="openai">OpenAI</option>
           </select>
         </div>
         <div class="field">
-          <label>API Key</label>
+          <label for="ai-key">API Key</label>
           <input type="password" id="ai-key" placeholder="Stored locally only" />
         </div>
         <div class="field">
-          <label>Model</label>
-          <input type="text" id="ai-model" placeholder="gemini-2.0-flash / gpt-4o-mini" />
+          <label for="ai-model">Model</label>
+          <select id="ai-model"></select>
         </div>
       </div>
     </div>
@@ -399,7 +400,7 @@
 
 <footer class="app-footer">
   <div class="footer-left">
-    <span class="version-pill">v1.1.0</span>
+    <span class="version-pill">v1.2.0</span>
     <span>Built for nursing educators</span>
   </div>
   <div class="footer-right">
@@ -434,45 +435,15 @@
       </div>
       <h2>Welcome to TOS + NLE Generator</h2>
       <p>Generate CHED &amp; NLE-aligned Tables of Specifications and exams in five guided steps.</p>
-      <span class="modal-version">v1.1.0</span>
+      <span class="modal-version">v1.2.0</span>
     </div>
 
     <div class="modal-steps">
-      <div class="modal-step">
-        <div class="step-num">1</div>
-        <div>
-          <div class="step-title">Setup</div>
-          <div class="step-desc">Enter subject, term, hours, items, and coverage areas.</div>
-        </div>
-      </div>
-      <div class="modal-step">
-        <div class="step-num">2</div>
-        <div>
-          <div class="step-title">Bloom's</div>
-          <div class="step-desc">Adjust the 6 cognitive levels (default 30/70 split).</div>
-        </div>
-      </div>
-      <div class="modal-step">
-        <div class="step-num">3</div>
-        <div>
-          <div class="step-title">TOS</div>
-          <div class="step-desc">Review the auto-generated Table of Specifications.</div>
-        </div>
-      </div>
-      <div class="modal-step">
-        <div class="step-num">4</div>
-        <div>
-          <div class="step-title">Questions</div>
-          <div class="step-desc">Generate items — template mode or AI mode.</div>
-        </div>
-      </div>
-      <div class="modal-step">
-        <div class="step-num">5</div>
-        <div>
-          <div class="step-title">Export</div>
-          <div class="step-desc">Download TOS, Exam, and Answer Key as .docx.</div>
-        </div>
-      </div>
+      <div class="modal-step"><div class="step-num">1</div><div><div class="step-title">Setup</div><div class="step-desc">Enter subject, term, hours, items, and coverage areas.</div></div></div>
+      <div class="modal-step"><div class="step-num">2</div><div><div class="step-title">Bloom's</div><div class="step-desc">Adjust the 6 cognitive levels (default 30/70 split).</div></div></div>
+      <div class="modal-step"><div class="step-num">3</div><div><div class="step-title">TOS</div><div class="step-desc">Review the auto-generated Table of Specifications.</div></div></div>
+      <div class="modal-step"><div class="step-num">4</div><div><div class="step-title">Questions</div><div class="step-desc">Generate items — template mode or AI mode.</div></div></div>
+      <div class="modal-step"><div class="step-num">5</div><div><div class="step-title">Export</div><div class="step-desc">Download TOS, Exam, and Answer Key as .docx.</div></div></div>
     </div>
 
     <div class="modal-actions">
