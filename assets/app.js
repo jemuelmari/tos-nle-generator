@@ -592,6 +592,57 @@ function renderTOS() {
   if (!state.tos) { container.innerHTML = ''; return; }
   const t = state.tos;
 
+  // -------- Pre-compute item number assignments (Bloom × Coverage) --------
+  // Every item number (1..N) belongs to EXACTLY one (Bloom, Coverage) cell.
+  // Bloom ranges: e.g., Remembering 1-5, Understanding 6-10, ...
+  // Within each Bloom range, distribute sequentially across coverage areas.
+
+  const totalCovItems = t.coverage.reduce((s, x) => s + (x.items || 0), 0);
+  const assignment = {}; // assignment[bloomKey][covIndex] = [numbers]
+
+  BLOOM_LEVELS.forEach(b => {
+    const bInfo = t.bloom.find(x => x.key === b.key);
+    const range = bInfo.itemRange;
+    assignment[b.key] = {};
+    if (!range || range.length === 0) {
+      t.coverage.forEach((_, ci) => assignment[b.key][ci] = []);
+      return;
+    }
+
+    const totalBloomItems = range[1] - range[0] + 1;
+    let cursor = range[0];
+
+    // Distribute items across coverage areas proportionally,
+    // ensuring no gaps and no overlaps.
+    t.coverage.forEach((c, ci) => {
+      // Calculate how many items this coverage gets from this Bloom level
+      const covShare = totalCovItems > 0 ? (c.items || 0) / totalCovItems : 0;
+      let count;
+
+      if (ci === t.coverage.length - 1) {
+        // Last coverage area takes the remainder — ensures full coverage
+        count = (range[1] - cursor) + 1;
+      } else {
+        count = Math.round(covShare * totalBloomItems);
+        // Don't exceed remaining slots
+        const remaining = (range[1] - cursor) + 1;
+        const remainingCov = t.coverage.length - ci - 1;
+        // Keep at least 0 for each remaining coverage area
+        if (count > remaining - remainingCov) {
+          count = Math.max(0, remaining - remainingCov);
+        }
+      }
+
+      const nums = [];
+      for (let i = 0; i < count; i++) {
+        nums.push(cursor);
+        cursor++;
+      }
+      assignment[b.key][ci] = nums;
+    });
+  });
+
+  // -------- Build the table --------
   const table = el('table');
   const thead = el('thead');
   const r1 = el('tr');
@@ -609,6 +660,8 @@ function renderTOS() {
   table.appendChild(thead);
 
   const tbody = el('tbody');
+
+  // Coverage rows
   t.coverage.forEach((c, ci) => {
     const row = el('tr');
     row.appendChild(el('td', { class: 'left' }, c.title));
@@ -616,26 +669,8 @@ function renderTOS() {
     row.appendChild(el('td', {}, c.percentHours + '%'));
 
     BLOOM_LEVELS.forEach(b => {
-      const bInfo = t.bloom.find(x => x.key === b.key);
-      const range = bInfo.itemRange;
-      if (!range || range.length === 0) {
-        row.appendChild(el('td', {}, '—'));
-        return;
-      }
-      const totalCovItems = t.coverage.reduce((s, x) => s + x.items, 0);
-      const covShare = c.items / totalCovItems;
-      const totalBloomItems = range[1] - range[0] + 1;
-      const start = range[0] + Math.round(
-        t.coverage.slice(0, ci).reduce((s, x) => s + x.items, 0) / totalCovItems * totalBloomItems
-      );
-      const count = Math.round(covShare * totalBloomItems);
-      if (count <= 0) {
-        row.appendChild(el('td', {}, '—'));
-      } else {
-        const nums = [];
-        for (let i = 0; i < count; i++) nums.push(start + i);
-        row.appendChild(el('td', {}, nums.join(', ')));
-      }
+      const nums = assignment[b.key][ci] || [];
+      row.appendChild(el('td', {}, nums.length ? nums.join(', ') : '—'));
     });
 
     row.appendChild(el('td', {}, String(c.items)));
@@ -643,6 +678,7 @@ function renderTOS() {
     tbody.appendChild(row);
   });
 
+  // Item Placement row
   const placementRow = el('tr', { class: 'total-row' });
   placementRow.appendChild(el('td', { class: 'left' }, 'Item Placement'));
   placementRow.appendChild(el('td', {}, ''));
@@ -656,6 +692,7 @@ function renderTOS() {
   placementRow.appendChild(el('td', {}, '100%'));
   tbody.appendChild(placementRow);
 
+  // TOTAL row
   const totalRow = el('tr', { class: 'total-row' });
   totalRow.appendChild(el('td', { class: 'left' }, 'TOTAL'));
   totalRow.appendChild(el('td', {}, String(t.totalHours)));
@@ -668,6 +705,7 @@ function renderTOS() {
   totalRow.appendChild(el('td', {}, '100%'));
   tbody.appendChild(totalRow);
 
+  // Percentage row
   const pctRow = el('tr', { class: 'pct-row' });
   pctRow.appendChild(el('td', { class: 'left' }, 'Percentage'));
   pctRow.appendChild(el('td', {}, ''));
@@ -680,6 +718,7 @@ function renderTOS() {
   pctRow.appendChild(el('td', {}, ''));
   tbody.appendChild(pctRow);
 
+  // Summary row
   const summaryRow = el('tr');
   summaryRow.appendChild(el('td', { class: 'left', colspan: '3' },
     `Lower-Order: ${t.lowerPercent}%`));
@@ -693,6 +732,7 @@ function renderTOS() {
   container.innerHTML = '';
   container.appendChild(table);
 
+  // Signatories
   const sigs = el('div', { class: 'signatories' });
   const addSig = (label, value) => {
     if (!value) return;
@@ -710,6 +750,7 @@ function renderTOS() {
   addSig('Approved by', state.signatories.approved);
   container.appendChild(sigs);
 
+  // Warnings
   const warnBox = $('#tos-warnings');
   warnBox.innerHTML = '';
   const issues = [];
