@@ -6,12 +6,10 @@
   <title>TOS + NLE Question Generator</title>
   <meta name="description" content="Generate CHED & NLE-aligned Tables of Specifications and exams with Bloom's Taxonomy." />
 
-  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
 
-  <!-- Icons (Lucide via CDN) -->
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 
   <link rel="stylesheet" href="assets/style.css" />
@@ -20,13 +18,14 @@
 </head>
 <body data-theme="light">
 
-<!-- Decorative background orbs -->
+<!-- ====== Decorative background ====== -->
 <div class="bg-orbs" aria-hidden="true">
   <div class="orb orb-1"></div>
   <div class="orb orb-2"></div>
   <div class="orb orb-3"></div>
 </div>
 
+<!-- ====== Header ====== -->
 <header class="app-header">
   <div class="brand">
     <div class="brand-mark">
@@ -35,7 +34,7 @@
     <div class="brand-text">
       <h1>
         TOS + NLE Generator
-        <span class="version-badge" title="App version">v1.0.0</span>
+        <span class="version-badge" title="App version">v1.1.0</span>
       </h1>
       <p class="subtitle">
         <span class="dot"></span>
@@ -58,9 +57,71 @@
     <button id="btn-reset" class="icon-btn" title="Reset">
       <i data-lucide="rotate-ccw"></i>
     </button>
+    <button id="btn-help" class="icon-btn" title="Help / Welcome">
+      <i data-lucide="help-circle"></i>
+    </button>
   </div>
 </header>
 
+<!-- ====== Dashboard Bar (Feature D) ====== -->
+<section class="dashboard" id="dashboard">
+  <div class="dash-item">
+    <div class="dash-icon"><i data-lucide="book-open"></i></div>
+    <div class="dash-info">
+      <div class="dash-label">Subject</div>
+      <div class="dash-value" id="dash-subject">—</div>
+    </div>
+  </div>
+  <div class="dash-divider"></div>
+  <div class="dash-item">
+    <div class="dash-icon"><i data-lucide="calendar"></i></div>
+    <div class="dash-info">
+      <div class="dash-label">Term</div>
+      <div class="dash-value" id="dash-term">Midterm</div>
+    </div>
+  </div>
+  <div class="dash-divider"></div>
+  <div class="dash-item">
+    <div class="dash-icon"><i data-lucide="list-checks"></i></div>
+    <div class="dash-info">
+      <div class="dash-label">Total Items</div>
+      <div class="dash-value" id="dash-items">50</div>
+    </div>
+  </div>
+  <div class="dash-divider"></div>
+  <div class="dash-item">
+    <div class="dash-icon"><i data-lucide="clock"></i></div>
+    <div class="dash-info">
+      <div class="dash-label">Total Hours</div>
+      <div class="dash-value" id="dash-hours">12</div>
+    </div>
+  </div>
+  <div class="dash-divider"></div>
+  <div class="dash-item dash-bloom">
+    <div class="dash-icon"><i data-lucide="pie-chart"></i></div>
+    <div class="dash-info">
+      <div class="dash-label">Bloom's Split</div>
+      <div class="dash-bloom-bar">
+        <div class="dash-bloom-seg lower" id="dash-bloom-lower" style="width:30%">
+          <span id="dash-bloom-lower-label">30%</span>
+        </div>
+        <div class="dash-bloom-seg higher" id="dash-bloom-higher" style="width:70%">
+          <span id="dash-bloom-higher-label">70%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="dash-divider"></div>
+  <div class="dash-item">
+    <div class="dash-icon" id="dash-status-icon"><i data-lucide="shield-check"></i></div>
+    <div class="dash-info">
+      <div class="dash-label">Validation</div>
+      <div class="dash-value" id="dash-status">Ready</div>
+    </div>
+  </div>
+</section>
+
+<!-- ====== Tabs ====== -->
 <nav class="tabs" role="tablist">
   <button class="tab active" data-tab="setup">
     <i data-lucide="settings-2"></i><span>Setup</span>
@@ -347,13 +408,98 @@
 
 <footer class="app-footer">
   <div class="footer-left">
-    <span class="version-pill">v1.0.0</span>
+    <span class="version-pill">v1.1.0</span>
     <span>Built for nursing educators</span>
   </div>
   <div class="footer-right">
     Aligned with <strong>CHED CMO 15 s. 2017</strong> &amp; <strong>PRC BON Res. 10 s. 2025</strong>
   </div>
 </footer>
+
+<!-- ====== Progress Overlay (Feature A) ====== -->
+<div class="progress-overlay" id="progress-overlay" hidden>
+  <div class="progress-card">
+    <div class="progress-spinner">
+      <svg viewBox="0 0 50 50">
+        <circle class="spinner-ring" cx="25" cy="25" r="20" />
+        <circle class="spinner-fill" cx="25" cy="25" r="20" id="progress-circle" />
+      </svg>
+      <div class="progress-percent" id="progress-percent">0%</div>
+    </div>
+    <div class="progress-title">Generating Questions with AI</div>
+    <div class="progress-sub" id="progress-sub">Preparing…</div>
+    <div class="progress-detail" id="progress-detail">Item 0 of 50</div>
+    <button class="btn btn-ghost btn-sm" id="btn-cancel-ai">Cancel</button>
+  </div>
+</div>
+
+<!-- ====== Onboarding Modal (Feature B) ====== -->
+<div class="modal-overlay" id="welcome-modal" hidden>
+  <div class="modal-card">
+    <button class="modal-close" id="btn-close-welcome" aria-label="Close">
+      <i data-lucide="x"></i>
+    </button>
+    <div class="modal-hero">
+      <div class="modal-hero-icon">
+        <i data-lucide="sparkles"></i>
+      </div>
+      <h2>Welcome to TOS + NLE Generator</h2>
+      <p>Generate CHED &amp; NLE-aligned Tables of Specifications and exams in five guided steps.</p>
+      <span class="modal-version">v1.1.0</span>
+    </div>
+
+    <div class="modal-steps">
+      <div class="modal-step">
+        <div class="step-num">1</div>
+        <div>
+          <div class="step-title">Setup</div>
+          <div class="step-desc">Enter subject, term, hours, items, and coverage areas.</div>
+        </div>
+      </div>
+      <div class="modal-step">
+        <div class="step-num">2</div>
+        <div>
+          <div class="step-title">Bloom's</div>
+          <div class="step-desc">Adjust the 6 cognitive levels (default 30/70 split).</div>
+        </div>
+      </div>
+      <div class="modal-step">
+        <div class="step-num">3</div>
+        <div>
+          <div class="step-title">TOS</div>
+          <div class="step-desc">Review the auto-generated Table of Specifications.</div>
+        </div>
+      </div>
+      <div class="modal-step">
+        <div class="step-num">4</div>
+        <div>
+          <div class="step-title">Questions</div>
+          <div class="step-desc">Generate items — template mode or AI mode.</div>
+        </div>
+      </div>
+      <div class="modal-step">
+        <div class="step-num">5</div>
+        <div>
+          <div class="step-title">Export</div>
+          <div class="step-desc">Download TOS, Exam, and Answer Key as .docx.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <label class="modal-check">
+        <input type="checkbox" id="chk-hide-welcome" />
+        <span>Don't show this again</span>
+      </label>
+      <button class="btn btn-primary" id="btn-start-welcome">
+        <i data-lucide="play"></i> Get Started
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ====== Toast Container (Feature C) ====== -->
+<div class="toast-container" id="toast-container"></div>
 
 <script src="assets/app.js"></script>
 </body>
