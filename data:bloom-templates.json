@@ -1,0 +1,116 @@
+{
+  "version": "1.0",
+  "note": "Question stem templates per Bloom's level. Placeholders in {curly_braces} are filled by the user or expanded by the AI engine. Templates are topic-agnostic so they work for any nursing subject.",
+  "levels": {
+    "Remembering": {
+      "order": 1,
+      "category": "lower",
+      "option_style": "short_phrase",
+      "stem_templates": [
+        "Which {structure|term|definition} is described as {description}?",
+        "Which of the following best defines {concept}?",
+        "Which {tool|structure|term} is used for {purpose}?",
+        "Which of the following is a normal finding for {structure}?",
+        "Which {term} refers to {definition}?",
+        "Which structure is responsible for {function}?",
+        "Which of the following is the correct {term} for {description}?"
+      ],
+      "option_rules": {
+        "length": "3-6 words",
+        "distractor_rule": "same_category_as_answer",
+        "avoid": ["all of the above", "none of the above"]
+      },
+      "rationale_pattern": "State the correct answer and its definition/function. Briefly explain why each distractor is incorrect by naming what it actually does."
+    },
+    "Understanding": {
+      "order": 2,
+      "category": "lower",
+      "option_style": "short_phrase",
+      "stem_templates": [
+        "A patient reports {symptom}. Which {structure|process} is most likely involved?",
+        "Which finding indicates {normal|abnormal} {function}?",
+        "A client asks about {topic}. Which statement best explains {concept}?",
+        "Which of the following describes the function of {structure} during {process}?",
+        "Which statement best explains why {phenomenon} occurs?"
+      ],
+      "option_rules": {
+        "length": "4-8 words",
+        "distractor_rule": "plausible_misconception",
+        "avoid": ["all of the above", "none of the above"]
+      },
+      "rationale_pattern": "Explain the underlying principle or mechanism. Correct the misconception in each distractor."
+    },
+    "Applying": {
+      "order": 3,
+      "category": "lower",
+      "option_style": "short_phrase",
+      "stem_templates": [
+        "Which tool is used to assess {structure|function}?",
+        "Which technique best demonstrates {procedure}?",
+        "Which finding is expected when assessing {structure} in a {age_group} client?",
+        "Which action should the nurse take to perform {procedure} correctly?",
+        "Which of the following is the correct step when assessing {system}?"
+      ],
+      "option_rules": {
+        "length": "5-10 words",
+        "distractor_rule": "incorrect_step_or_wrong_tool",
+        "avoid": ["all of the above", "none of the above"]
+      },
+      "rationale_pattern": "State the correct technique/tool and why it is appropriate. Explain what each distractor actually assesses or represents."
+    },
+    "Analyzing": {
+      "order": 4,
+      "category": "higher",
+      "option_style": "full_sentence",
+      "stem_templates": [
+        "A {age}-year-old client presents with {chief_complaint}. On assessment, {finding}. What is the best interpretation?",
+        "A client reports {symptom}. Assessment reveals {data}. Which condition is most likely?",
+        "During {procedure}, the nurse notes {finding}. What is the best nursing interpretation?",
+        "A {age}-year-old client has {finding}. Which factor best explains this result?",
+        "The nurse assesses {finding} in a client with {condition}. What is the best analysis of this finding?"
+      ],
+      "option_rules": {
+        "length": "full sentence, 8-15 words",
+        "distractor_rule": "partial_correct_or_wrong_interpretation",
+        "avoid": ["all of the above", "none of the above"]
+      },
+      "rationale_pattern": "Interpret the finding using the underlying pathophysiology or principle. Explain why each distractor is a plausible but incorrect interpretation."
+    },
+    "Evaluating": {
+      "order": 5,
+      "category": "higher",
+      "option_style": "full_sentence",
+      "stem_templates": [
+        "A client presents with {data}. What is the best nursing action?",
+        "A {age}-year-old client reports {complaint} and shows {finding}. What is the best next step?",
+        "The nurse assesses {finding} in a client with {condition}. What is the priority nursing action?",
+        "A client's assessment reveals {data}. Which nursing action is most appropriate?",
+        "Which nursing action should be performed FIRST for a client presenting with {findings}?"
+      ],
+      "option_rules": {
+        "length": "full sentence, 10-18 words",
+        "distractor_rule": "incorrect_priority_or_unsafe_action",
+        "avoid": ["all of the above", "none of the above"]
+      },
+      "rationale_pattern": "Justify the correct action using priority-setting frameworks (ABC, Maslow, safety). Explain why distractors are either unsafe, inappropriate, or lower priority."
+    },
+    "Creating": {
+      "order": 6,
+      "category": "higher",
+      "option_style": "full_sentence",
+      "stem_templates": [
+        "A {age}-year-old client is being discharged with {condition}. Which {care plan|teaching plan|discharge plan} is most appropriate?",
+        "Design a {nursing intervention|teaching strategy} for a client with {condition}. Which sequence is correct?",
+        "Formulate a prioritized plan of care for a client presenting with {findings}. Which action should the nurse include FIRST?",
+        "Which discharge teaching plan best addresses the needs of a client with {condition} and {barrier}?",
+        "The nurse is creating a {care plan|community program} for {population}. Which component should be prioritized?"
+      ],
+      "option_rules": {
+        "length": "full sentence, 12-20 words",
+        "distractor_rule": "incomplete_or_misprioritized_plan",
+        "avoid": ["all of the above", "none of the above"]
+      },
+      "rationale_pattern": "Justify the constructed plan against principles of patient-centered care, teaching-learning, and safety. Explain why distractors are incomplete, misprioritized, or inappropriate for the client's context."
+    }
+  }
+}

@@ -1,0 +1,154 @@
+{
+  "version": "1.0",
+  "source": "CHED CMO No. 15 s. 2017 — Philippine Nursing Education Curriculum (BSN Program)",
+  "note": "Core competency areas for nursing practice. Instructors may extend this file with their own institutional competencies.",
+  "core_competency_areas": [
+    {
+      "code": "CC-01",
+      "name": "Safe, Quality Nursing Care",
+      "description": "Demonstrate knowledge and skills in the safe, compassionate, and quality nursing care to individuals, families, and communities.",
+      "sub_competencies": [
+        "Assess health status and needs of clients",
+        "Formulate and implement nursing care plans",
+        "Evaluate client outcomes and revise care",
+        "Apply evidence-based nursing interventions",
+        "Observe safety protocols and infection control"
+      ]
+    },
+    {
+      "code": "CC-02",
+      "name": "Management of Resources and Environment",
+      "description": "Manage the nursing care environment, resources, and equipment to promote safe and effective care.",
+      "sub_competencies": [
+        "Organize and maintain a safe care environment",
+        "Manage supplies, equipment, and technology",
+        "Apply principles of waste segregation and disposal",
+        "Implement emergency and disaster preparedness",
+        "Ensure client and staff safety"
+      ]
+    },
+    {
+      "code": "CC-03",
+      "name": "Health Education",
+      "description": "Provide health education to individuals, families, and communities using appropriate teaching-learning strategies.",
+      "sub_competencies": [
+        "Assess learning needs and readiness",
+        "Develop teaching plans",
+        "Implement teaching strategies",
+        "Evaluate learning outcomes",
+        "Use appropriate instructional materials"
+      ]
+    },
+    {
+      "code": "CC-04",
+      "name": "Legal Responsibility and Accountability",
+      "description": "Practice nursing within the legal and ethical boundaries of the profession.",
+      "sub_competencies": [
+        "Apply provisions of the Nursing Practice Act (RA 9173)",
+        "Observe the Code of Ethics for Nurses",
+        "Document nursing care accurately and legally",
+        "Recognize and report negligence, malpractice, and abuse",
+        "Protect client rights and confidentiality"
+      ]
+    },
+    {
+      "code": "CC-05",
+      "name": "Ethico-Moral Responsibility",
+      "description": "Demonstrate ethical decision-making and moral responsibility in nursing practice.",
+      "sub_competencies": [
+        "Apply ethical principles in client care",
+        "Resolve ethical dilemmas using frameworks",
+        "Advocate for client rights and welfare",
+        "Demonstrate professional integrity",
+        "Respect cultural, spiritual, and personal values"
+      ]
+    },
+    {
+      "code": "CC-06",
+      "name": "Personal and Professional Development",
+      "description": "Demonstrate personal and professional growth through continuous learning and self-development.",
+      "sub_competencies": [
+        "Engage in lifelong learning",
+        "Demonstrate professional behavior",
+        "Participate in research and evidence-based practice",
+        "Engage in professional organizations",
+        "Reflect on personal and professional practice"
+      ]
+    },
+    {
+      "code": "CC-07",
+      "name": "Quality Improvement",
+      "description": "Participate in quality improvement activities to enhance nursing practice and client outcomes.",
+      "sub_competencies": [
+        "Identify areas for improvement in nursing care",
+        "Apply quality improvement tools and methods",
+        "Monitor and evaluate nursing outcomes",
+        "Report and act on client safety incidents",
+        "Engage in continuous quality improvement"
+      ]
+    },
+    {
+      "code": "CC-08",
+      "name": "Research",
+      "description": "Utilize research findings to improve nursing practice and contribute to the body of nursing knowledge.",
+      "sub_competencies": [
+        "Critique nursing research",
+        "Apply evidence-based practice",
+        "Conduct research ethically",
+        "Disseminate research findings",
+        "Integrate research into clinical practice"
+      ]
+    },
+    {
+      "code": "CC-09",
+      "name": "Records Management",
+      "description": "Maintain accurate, complete, and confidential client records in accordance with legal and institutional standards.",
+      "sub_competencies": [
+        "Document nursing assessment and interventions",
+        "Use correct charting formats (e.g., SOAPIE, FDAR)",
+        "Ensure confidentiality of client records",
+        "Maintain legibility and accuracy in records",
+        "Comply with institutional documentation policies"
+      ]
+    },
+    {
+      "code": "CC-10",
+      "name": "Communication",
+      "description": "Communicate effectively with clients, families, and the health care team using appropriate verbal, nonverbal, and written methods.",
+      "sub_competencies": [
+        "Use therapeutic communication techniques",
+        "Communicate with the interprofessional team",
+        "Adapt communication to age, culture, and condition",
+        "Use information technology appropriately",
+        "Document and report communications accurately"
+      ]
+    },
+    {
+      "code": "CC-11",
+      "name": "Collaboration and Teamwork",
+      "description": "Collaborate with clients, families, and the interprofessional health care team to achieve optimal client outcomes.",
+      "sub_competencies": [
+        "Work effectively within the health care team",
+        "Participate in case conferences and referrals",
+        "Coordinate care across settings",
+        "Demonstrate respect for team roles",
+        "Facilitate shared decision-making"
+      ]
+    }
+  ],
+  "skill_laboratory_taxonomy": {
+    "note": "Additional tags for skills lab / RLE courses. Extend as needed.",
+    "tags": [
+      "Anatomy and Physiology",
+      "Health Assessment",
+      "Nursing Procedure",
+      "Special Considerations",
+      "Rationale",
+      "Return Demonstration",
+      "Documentation",
+      "Client Education",
+      "Safety and Infection Control",
+      "Interprofessional Communication"
+    ]
+  }
+}

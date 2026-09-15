@@ -1,0 +1,132 @@
+{
+  "version": "1.0",
+  "source": "PRC Professional Regulatory Board of Nursing — Resolution No. 10, s. 2025 (Enhanced Tables of Specifications for the Nurses Licensure Examination)",
+  "effective": "November 2025 NLE and subsequent schedules",
+  "replaces": ["Resolution No. 18 (s. 2006)", "Resolution No. 11 (s. 2017)"],
+  "note": "The Enhanced TOS is competency-based and aligned with the Philippine Qualifications Framework (PQF) and Bloom's Taxonomy. It supersedes the 2006 and 2017 frameworks.",
+  "exam_parts": [
+    {
+      "code": "NP-I",
+      "name": "Nursing Practice I",
+      "description": "Community Health Nursing — Care of individuals, families, population groups, and communities",
+      "weight": "20%",
+      "focus_areas": [
+        "Health promotion and disease prevention",
+        "Community assessment and diagnosis",
+        "Communicable disease nursing",
+        "Primary health care",
+        "Referral and coordination"
+      ]
+    },
+    {
+      "code": "NP-II",
+      "name": "Nursing Practice II",
+      "description": "Care of Healthy/At-Risk Mother and Child — Maternal and child nursing, human growth and development",
+      "weight": "20%",
+      "focus_areas": [
+        "Antepartal, intrapartal, postpartal care",
+        "Newborn and infant care",
+        "Growth and development milestones",
+        "Adolescent health",
+        "Family-centered care"
+      ]
+    },
+    {
+      "code": "NP-III",
+      "name": "Nursing Practice III",
+      "description": "Care of Clients with Physiologic and Psychosocial Alterations (Part A) — Surgery, oxygenation, fluids and electrolytes, infectious/inflammatory/immunologic response, cellular aberrations",
+      "weight": "20%",
+      "focus_areas": [
+        "Perioperative nursing",
+        "Oxygenation and respiratory care",
+        "Fluids, electrolytes, and acid-base balance",
+        "Infection and immunologic response",
+        "Cellular aberrations (cancer nursing)"
+      ]
+    },
+    {
+      "code": "NP-IV",
+      "name": "Nursing Practice IV",
+      "description": "Care of Clients with Physiologic and Psychosocial Alterations (Part B) — Metabolic, endocrine, gastrointestinal, renal, neurologic, sensory, and musculoskeletal alterations",
+      "weight": "20%",
+      "focus_areas": [
+        "Metabolic and endocrine disorders",
+        "Gastrointestinal and hepatobiliary disorders",
+        "Renal and urinary disorders",
+        "Neurologic and sensory disorders",
+        "Musculoskeletal disorders"
+      ]
+    },
+    {
+      "code": "NP-V",
+      "name": "Nursing Practice V",
+      "description": "Care of Clients with Physiologic and Psychosocial Alterations (Part C) — Psychiatric/mental health nursing, care of older adults, and other specialty areas",
+      "weight": "20%",
+      "focus_areas": [
+        "Psychiatric and mental health nursing",
+        "Care of older adults (gerontologic nursing)",
+        "Substance abuse and crisis intervention",
+        "Therapeutic communication",
+        "Psychopharmacology"
+      ]
+    }
+  ],
+  "integrated_knowledge_areas": {
+    "note": "These areas are integrated across all five Nursing Practice parts — not tested as separate subjects.",
+    "areas": [
+      "Anatomy and Physiology",
+      "Pathophysiology",
+      "Pharmacology and Therapeutics",
+      "Nutrition and Diet Therapy",
+      "Parasitology and Microbiology",
+      "Nursing Process (Assessment, Diagnosis, Planning, Implementation, Evaluation)"
+    ]
+  },
+  "competency_standards": {
+    "note": "The NLE tests competencies across the 11 Key Areas of Responsibility from the Competency Standards of Nursing Practice in the Philippines.",
+    "categories": [
+      {
+        "category": "Patient Care Competencies",
+        "areas": [
+          "Safe and Quality Nursing Care",
+          "Management of Resources and Environment",
+          "Health Education",
+          "Collaboration and Teamwork"
+        ]
+      },
+      {
+        "category": "Empowering Competencies",
+        "areas": [
+          "Legal Responsibilities",
+          "Ethico-Moral-Spiritual Responsibilities",
+          "Personal and Professional Development"
+        ]
+      },
+      {
+        "category": "Enabling Competencies",
+        "areas": [
+          "Management of Resources and Environment",
+          "Records Management"
+        ]
+      },
+      {
+        "category": "Enhancing Competencies",
+        "areas": [
+          "Research",
+          "Quality Improvement"
+        ]
+      }
+    ]
+  },
+  "blooms_taxonomy_distribution": {
+    "note": "The Enhanced TOS explicitly incorporates Bloom's Taxonomy cognitive domains. Exact percentages are defined per subject in the full TOS document.",
+    "levels": [
+      "Remembering",
+      "Understanding",
+      "Applying",
+      "Analyzing",
+      "Evaluating",
+      "Creating"
+    ]
+  }
+}
