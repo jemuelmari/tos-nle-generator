@@ -4,146 +4,210 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>TOS + NLE Question Generator</title>
+  <meta name="description" content="Generate CHED & NLE-aligned Tables of Specifications and exams with Bloom's Taxonomy." />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+
+  <!-- Icons (Lucide via CDN) -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
   <link rel="stylesheet" href="assets/style.css" />
-  <!-- docx export -->
   <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
-  <!-- FileSaver -->
   <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
 </head>
-<body>
+<body data-theme="light">
+
+<!-- Decorative background orbs -->
+<div class="bg-orbs" aria-hidden="true">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+</div>
 
 <header class="app-header">
   <div class="brand">
-    <h1>📋 TOS + NLE Question Generator</h1>
-    <p class="subtitle">CHED · NLE · Revised Bloom's Taxonomy Aligned</p>
+    <div class="brand-mark">
+      <i data-lucide="clipboard-list"></i>
+    </div>
+    <div class="brand-text">
+      <h1>
+        TOS + NLE Generator
+        <span class="version-badge" title="App version">v1.0.0</span>
+      </h1>
+      <p class="subtitle">
+        <span class="dot"></span>
+        CHED · NLE · Revised Bloom's Taxonomy Aligned
+      </p>
+    </div>
   </div>
+
   <div class="header-actions">
-    <button id="btn-save-project" class="btn btn-ghost" title="Save project as JSON">💾 Save</button>
-    <button id="btn-load-project" class="btn btn-ghost" title="Load project from JSON">📂 Load</button>
+    <button id="btn-theme" class="icon-btn" title="Toggle theme">
+      <i data-lucide="moon"></i>
+    </button>
+    <button id="btn-save-project" class="icon-btn" title="Save project">
+      <i data-lucide="save"></i>
+    </button>
+    <button id="btn-load-project" class="icon-btn" title="Load project">
+      <i data-lucide="folder-open"></i>
+    </button>
     <input type="file" id="file-load-project" accept=".json" hidden />
-    <button id="btn-reset" class="btn btn-ghost" title="Reset all inputs">🔄 Reset</button>
+    <button id="btn-reset" class="icon-btn" title="Reset">
+      <i data-lucide="rotate-ccw"></i>
+    </button>
   </div>
 </header>
 
-<nav class="tabs">
-  <button class="tab active" data-tab="setup">1. Setup</button>
-  <button class="tab" data-tab="bloom">2. Bloom's</button>
-  <button class="tab" data-tab="tos">3. TOS</button>
-  <button class="tab" data-tab="questions">4. Questions</button>
-  <button class="tab" data-tab="export">5. Export</button>
+<nav class="tabs" role="tablist">
+  <button class="tab active" data-tab="setup">
+    <i data-lucide="settings-2"></i><span>Setup</span>
+  </button>
+  <button class="tab" data-tab="bloom">
+    <i data-lucide="layers"></i><span>Bloom's</span>
+  </button>
+  <button class="tab" data-tab="tos">
+    <i data-lucide="table-2"></i><span>TOS</span>
+  </button>
+  <button class="tab" data-tab="questions">
+    <i data-lucide="help-circle"></i><span>Questions</span>
+  </button>
+  <button class="tab" data-tab="export">
+    <i data-lucide="download"></i><span>Export</span>
+  </button>
 </nav>
 
 <main class="app-main">
 
-  <!-- ========== TAB 1: SETUP ========== -->
+  <!-- ============ TAB 1: SETUP ============ -->
   <section id="tab-setup" class="tab-panel active">
-    <h2>Step 1 — Course Setup</h2>
-
-    <div class="grid-2">
-      <div class="field">
-        <label for="input-subject">Subject / Course Code *</label>
-        <input type="text" id="input-subject" placeholder="e.g., NCM 101 RLE/LAB — Health Assessment IA (EENT)" />
+    <div class="panel-head">
+      <div>
+        <h2>Course Setup</h2>
+        <p class="hint">Enter subject details and coverage areas. Percentages auto-compute.</p>
       </div>
+      <span class="chip chip-primary">Step 1 of 5</span>
+    </div>
 
-      <div class="field">
-        <label for="input-term">Term *</label>
-        <select id="input-term">
-          <option value="MIDTERM">Midterm</option>
-          <option value="FINAL">Final Term</option>
-        </select>
-      </div>
-
-      <div class="field">
-        <label for="input-hours">Total Number of Hours Taught *</label>
-        <input type="number" id="input-hours" min="1" value="12" />
-      </div>
-
-      <div class="field">
-        <label for="input-items">Total Number of Items *</label>
-        <input type="number" id="input-items" min="1" value="50" />
-      </div>
-
-      <div class="field">
-        <label for="input-institution">Institution / Department</label>
-        <input type="text" id="input-institution" value="Tarlac State University — College of Science, Nursing Department" />
-      </div>
-
-      <div class="field">
-        <label for="input-exam-title">Exam Title</label>
-        <input type="text" id="input-exam-title" placeholder="e.g., Skills Laboratory Midterm Exam" />
+    <div class="card">
+      <div class="grid-2">
+        <div class="field">
+          <label for="input-subject">Subject / Course Code</label>
+          <input type="text" id="input-subject" placeholder="e.g., NCM 101 RLE/LAB — Health Assessment IA (EENT)" />
+        </div>
+        <div class="field">
+          <label for="input-term">Term</label>
+          <select id="input-term">
+            <option value="MIDTERM">Midterm</option>
+            <option value="FINAL">Final Term</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="input-hours">Total Number of Hours Taught</label>
+          <input type="number" id="input-hours" min="1" value="12" />
+        </div>
+        <div class="field">
+          <label for="input-items">Total Number of Items</label>
+          <input type="number" id="input-items" min="1" value="50" />
+        </div>
+        <div class="field">
+          <label for="input-institution">Institution / Department</label>
+          <input type="text" id="input-institution" value="Tarlac State University — College of Science, Nursing Department" />
+        </div>
+        <div class="field">
+          <label for="input-exam-title">Exam Title</label>
+          <input type="text" id="input-exam-title" placeholder="e.g., Skills Laboratory Midterm Exam" />
+        </div>
       </div>
     </div>
 
-    <hr />
+    <div class="section-head">
+      <h3><i data-lucide="list-tree"></i> Coverage Areas</h3>
+      <button id="btn-add-coverage" class="btn btn-secondary btn-sm">
+        <i data-lucide="plus"></i> Add Area
+      </button>
+    </div>
 
-    <h3>Coverage Areas</h3>
-    <p class="hint">Each row = one major topic block. Percent hours and percent items are auto-computed.</p>
-    <table class="coverage-table">
-      <thead>
-        <tr>
-          <th style="width:8%">#</th>
-          <th style="width:44%">Coverage Area / Topic</th>
-          <th style="width:14%">Hours</th>
-          <th style="width:14%">% Hours</th>
-          <th style="width:10%">Items</th>
-          <th style="width:10%"></th>
-        </tr>
-      </thead>
-      <tbody id="coverage-body">
-        <!-- populated by app.js -->
-      </tbody>
-    </table>
-    <button id="btn-add-coverage" class="btn btn-secondary">+ Add Coverage Area</button>
+    <div class="card card-flush">
+      <table class="coverage-table">
+        <thead>
+          <tr>
+            <th style="width:6%">#</th>
+            <th style="width:42%">Coverage Area / Topic</th>
+            <th style="width:14%">Hours</th>
+            <th style="width:14%">% Hours</th>
+            <th style="width:14%">Items</th>
+            <th style="width:10%"></th>
+          </tr>
+        </thead>
+        <tbody id="coverage-body"></tbody>
+      </table>
+    </div>
 
-    <hr />
+    <div class="section-head">
+      <h3><i data-lucide="signature"></i> Signatories</h3>
+    </div>
 
-    <h3>Signatories</h3>
-    <div class="grid-2">
-      <div class="field">
-        <label>Prepared By (Name, Credentials, Role)</label>
-        <input type="text" id="sig-prepared" value="JEMUEL C. MARI, MAN, RN, LPT — Clinical Instructor" />
-      </div>
-      <div class="field">
-        <label>Reviewed By #1</label>
-        <input type="text" id="sig-reviewed-1" value="ASST. PROF. REGIE S. JIMENEZ — Coordinator, Level I" />
-      </div>
-      <div class="field">
-        <label>Reviewed By #2</label>
-        <input type="text" id="sig-reviewed-2" value="ASSOC. PROF. ADORA N. OBREGON — Chairperson, RLE" />
-      </div>
-      <div class="field">
-        <label>Reviewed By #3</label>
-        <input type="text" id="sig-reviewed-3" value="DR. EMMANUEL DOMINIC RAYMOND M. BUGAYONG — Chairperson, Nursing Department" />
-      </div>
-      <div class="field">
-        <label>Approved By (Dean)</label>
-        <input type="text" id="sig-approved" value="PROF. MARY JANE N. RIGOR — Dean, College of Science" />
+    <div class="card">
+      <div class="grid-2">
+        <div class="field">
+          <label>Prepared By</label>
+          <input type="text" id="sig-prepared" value="JEMUEL C. MARI, MAN, RN, LPT — Clinical Instructor" />
+        </div>
+        <div class="field">
+          <label>Reviewed By #1</label>
+          <input type="text" id="sig-reviewed-1" value="ASST. PROF. REGIE S. JIMENEZ — Coordinator, Level I" />
+        </div>
+        <div class="field">
+          <label>Reviewed By #2</label>
+          <input type="text" id="sig-reviewed-2" value="ASSOC. PROF. ADORA N. OBREGON — Chairperson, RLE" />
+        </div>
+        <div class="field">
+          <label>Reviewed By #3</label>
+          <input type="text" id="sig-reviewed-3" value="DR. EMMANUEL DOMINIC RAYMOND M. BUGAYONG — Chairperson, Nursing Department" />
+        </div>
+        <div class="field">
+          <label>Approved By (Dean)</label>
+          <input type="text" id="sig-approved" value="PROF. MARY JANE N. RIGOR — Dean, College of Science" />
+        </div>
       </div>
     </div>
   </section>
 
-  <!-- ========== TAB 2: BLOOM'S ========== -->
+  <!-- ============ TAB 2: BLOOM'S ============ -->
   <section id="tab-bloom" class="tab-panel">
-    <h2>Step 2 — Bloom's Distribution</h2>
-    <p class="hint">
-      Adjust sliders to set the percentage of items per Bloom's level. Default = 30% lower-order / 70% higher-order.
-      Sliders must total 100%.
-    </p>
+    <div class="panel-head">
+      <div>
+        <h2>Bloom's Distribution</h2>
+        <p class="hint">Default: 30% lower-order · 70% higher-order. Sliders must total 100%.</p>
+      </div>
+      <span class="chip chip-primary">Step 2 of 5</span>
+    </div>
 
-    <div id="bloom-sliders" class="bloom-sliders">
-      <!-- populated by app.js -->
+    <div class="card">
+      <div id="bloom-sliders" class="bloom-sliders"></div>
     </div>
 
     <div class="bloom-summary">
-      <div class="bloom-meter">
-        <div class="bloom-meter-label">Lower-Order (R + U + Ap)</div>
-        <div class="bloom-bar"><div id="bar-lower" class="bloom-bar-fill lower"></div></div>
-        <div id="pct-lower" class="bloom-pct">30%</div>
+      <div class="metric-card">
+        <div class="metric-label">
+          <i data-lucide="arrow-down-circle"></i> Lower-Order
+          <span class="metric-sub">R + U + Ap</span>
+        </div>
+        <div class="metric-value" id="pct-lower">30%</div>
+        <div class="metric-bar"><div id="bar-lower" class="metric-fill lower"></div></div>
+        <div class="metric-target">Target ≤ 30%</div>
       </div>
-      <div class="bloom-meter">
-        <div class="bloom-meter-label">Higher-Order (An + Ev + Cr)</div>
-        <div class="bloom-bar"><div id="bar-higher" class="bloom-bar-fill higher"></div></div>
-        <div id="pct-higher" class="bloom-pct">70%</div>
+      <div class="metric-card">
+        <div class="metric-label">
+          <i data-lucide="arrow-up-circle"></i> Higher-Order
+          <span class="metric-sub">An + Ev + Cr</span>
+        </div>
+        <div class="metric-value" id="pct-higher">70%</div>
+        <div class="metric-bar"><div id="bar-higher" class="metric-fill higher"></div></div>
+        <div class="metric-target">Target ≥ 70%</div>
       </div>
     </div>
 
@@ -151,87 +215,128 @@
     <div id="bloom-total" class="alert alert-info">Total: 100%</div>
   </section>
 
-  <!-- ========== TAB 3: TOS ========== -->
+  <!-- ============ TAB 3: TOS ============ -->
   <section id="tab-tos" class="tab-panel">
-    <h2>Step 3 — Table of Specifications</h2>
-    <p class="hint">Auto-generated from your Setup and Bloom's inputs. Review before generating questions.</p>
-
-    <div class="tos-actions">
-      <button id="btn-recompute-tos" class="btn btn-primary">🔄 Recompute TOS</button>
-      <button id="btn-export-tos-docx" class="btn btn-secondary">⬇ Export TOS (.docx)</button>
-      <button id="btn-print-tos" class="btn btn-ghost">🖨 Print</button>
+    <div class="panel-head">
+      <div>
+        <h2>Table of Specifications</h2>
+        <p class="hint">Auto-generated from Setup + Bloom's. Review and adjust before generating questions.</p>
+      </div>
+      <span class="chip chip-primary">Step 3 of 5</span>
     </div>
 
-    <div id="tos-container" class="tos-container">
-      <!-- TOS table rendered here -->
+    <div class="action-bar">
+      <button id="btn-recompute-tos" class="btn btn-primary">
+        <i data-lucide="refresh-cw"></i> Recompute TOS
+      </button>
+      <button id="btn-export-tos-docx" class="btn btn-secondary">
+        <i data-lucide="file-text"></i> Export .docx
+      </button>
+      <button id="btn-print-tos" class="btn btn-ghost">
+        <i data-lucide="printer"></i> Print
+      </button>
     </div>
 
+    <div id="tos-container" class="tos-container"></div>
     <div id="tos-warnings" class="alerts"></div>
   </section>
 
-  <!-- ========== TAB 4: QUESTIONS ========== -->
+  <!-- ============ TAB 4: QUESTIONS ============ -->
   <section id="tab-questions" class="tab-panel">
-    <h2>Step 4 — Question Generation</h2>
+    <div class="panel-head">
+      <div>
+        <h2>Question Generation</h2>
+        <p class="hint">Generate template-based or AI-powered NLE-style items for each TOS slot.</p>
+      </div>
+      <span class="chip chip-primary">Step 4 of 5</span>
+    </div>
 
-    <div class="q-controls">
-      <button id="btn-generate-all-template" class="btn btn-primary">⚡ Generate All (Template Mode)</button>
-      <button id="btn-generate-all-ai" class="btn btn-secondary">🤖 Generate All (AI Mode)</button>
-      <button id="btn-clear-questions" class="btn btn-ghost">🗑 Clear All</button>
+    <div class="card action-card">
+      <div class="action-bar">
+        <button id="btn-generate-all-template" class="btn btn-primary">
+          <i data-lucide="zap"></i> Generate All (Template)
+        </button>
+        <button id="btn-generate-all-ai" class="btn btn-secondary">
+          <i data-lucide="sparkles"></i> Generate All (AI)
+        </button>
+        <button id="btn-clear-questions" class="btn btn-ghost">
+          <i data-lucide="trash-2"></i> Clear
+        </button>
 
-      <label class="ai-toggle">
-        <input type="checkbox" id="toggle-ai" />
-        <span>Enable AI Mode</span>
-      </label>
+        <label class="switch">
+          <input type="checkbox" id="toggle-ai" />
+          <span class="switch-slider"></span>
+          <span class="switch-label">AI Mode</span>
+        </label>
+      </div>
 
       <div id="ai-config" class="ai-config" hidden>
-        <label>Provider:
+        <div class="field">
+          <label>Provider</label>
           <select id="ai-provider">
             <option value="gemini">Google Gemini</option>
             <option value="openai">OpenAI</option>
           </select>
-        </label>
-        <label>API Key:
-          <input type="password" id="ai-key" placeholder="Paste your API key (stored locally)" />
-        </label>
-        <label>Model:
-          <input type="text" id="ai-model" placeholder="e.g., gemini-2.0-flash or gpt-4o-mini" />
-        </label>
+        </div>
+        <div class="field">
+          <label>API Key</label>
+          <input type="password" id="ai-key" placeholder="Stored locally only" />
+        </div>
+        <div class="field">
+          <label>Model</label>
+          <input type="text" id="ai-model" placeholder="gemini-2.0-flash / gpt-4o-mini" />
+        </div>
       </div>
     </div>
 
-    <div id="questions-container" class="questions-container">
-      <!-- question cards rendered here -->
-    </div>
+    <div id="questions-container" class="questions-container"></div>
   </section>
 
-  <!-- ========== TAB 5: EXPORT ========== -->
+  <!-- ============ TAB 5: EXPORT ============ -->
   <section id="tab-export" class="tab-panel">
-    <h2>Step 5 — Export</h2>
-    <p class="hint">Download your TOS, exam paper, and answer key with rationales.</p>
+    <div class="panel-head">
+      <div>
+        <h2>Export</h2>
+        <p class="hint">Download your TOS, exam paper, and answer key — ready to print or share.</p>
+      </div>
+      <span class="chip chip-primary">Step 5 of 5</span>
+    </div>
 
     <div class="export-grid">
       <div class="export-card">
-        <h3>📋 Table of Specifications</h3>
-        <p>Formatted TOS with coverage, hours, Bloom's distribution, item placement, and signatories.</p>
-        <button id="btn-export-tos" class="btn btn-primary">Download TOS (.docx)</button>
+        <div class="export-icon"><i data-lucide="clipboard-list"></i></div>
+        <h3>Table of Specifications</h3>
+        <p>Coverage, hours, Bloom's distribution, item placement, and signatories.</p>
+        <button id="btn-export-tos" class="btn btn-primary btn-block">
+          <i data-lucide="download"></i> Download .docx
+        </button>
       </div>
 
       <div class="export-card">
-        <h3>📝 Exam Paper</h3>
-        <p>Header, student info, directions, numbered items, end-of-exam marker, and signatory block.</p>
-        <button id="btn-export-exam" class="btn btn-primary">Download Exam (.docx)</button>
+        <div class="export-icon"><i data-lucide="file-edit"></i></div>
+        <h3>Exam Paper</h3>
+        <p>Header, directions, numbered items, end-of-exam marker, signatory block.</p>
+        <button id="btn-export-exam" class="btn btn-primary btn-block">
+          <i data-lucide="download"></i> Download .docx
+        </button>
       </div>
 
       <div class="export-card">
-        <h3>✅ Answer Key + Rationales</h3>
-        <p>Item number, correct answer, Bloom's level, CHED/NLE tags, and full rationale for each item.</p>
-        <button id="btn-export-answerkey" class="btn btn-primary">Download Answer Key (.docx)</button>
+        <div class="export-icon"><i data-lucide="check-circle-2"></i></div>
+        <h3>Answer Key + Rationales</h3>
+        <p>Correct answer, Bloom's level, CHED/NLE tags, and full rationale per item.</p>
+        <button id="btn-export-answerkey" class="btn btn-primary btn-block">
+          <i data-lucide="download"></i> Download .docx
+        </button>
       </div>
 
       <div class="export-card">
-        <h3>📦 Project Data (.json)</h3>
-        <p>Full project — TOS, Bloom's config, coverage, questions — reusable and shareable.</p>
-        <button id="btn-export-json" class="btn btn-secondary">Download Project (.json)</button>
+        <div class="export-icon"><i data-lucide="package"></i></div>
+        <h3>Project Data (.json)</h3>
+        <p>Full project — reusable and shareable across devices.</p>
+        <button id="btn-export-json" class="btn btn-secondary btn-block">
+          <i data-lucide="download"></i> Download .json
+        </button>
       </div>
     </div>
 
@@ -241,7 +346,13 @@
 </main>
 
 <footer class="app-footer">
-  <p>Built for nursing educators · Aligned with CHED CMO 15 s. 2017 &amp; PRC BON Res. No. 10 s. 2025</p>
+  <div class="footer-left">
+    <span class="version-pill">v1.0.0</span>
+    <span>Built for nursing educators</span>
+  </div>
+  <div class="footer-right">
+    Aligned with <strong>CHED CMO 15 s. 2017</strong> &amp; <strong>PRC BON Res. 10 s. 2025</strong>
+  </div>
 </footer>
 
 <script src="assets/app.js"></script>
