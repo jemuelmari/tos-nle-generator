@@ -1,10 +1,12 @@
 /* =====================================================
-   TOS + NLE Question Generator — App Logic
+   TOS + NLE Question Generator — App Logic  (v1.1.0)
    ===================================================== */
 
 /* --------------------------------------------------
    SECTION 0 — CONSTANTS & STATE
 -------------------------------------------------- */
+
+const APP_VERSION = '1.1.0';
 
 const BLOOM_LEVELS = [
   { key: 'Remembering',   order: 1, category: 'lower',  default: 10 },
@@ -22,8 +24,8 @@ const state = {
   totalItems: 50,
   institution: '',
   examTitle: '',
-  coverage: [],              // [{ id, title, hours, items }]
-  bloom: {},                 // { Remembering: 10, ... }
+  coverage: [],
+  bloom: {},
   signatories: {
     prepared: '',
     reviewed1: '',
@@ -31,12 +33,13 @@ const state = {
     reviewed3: '',
     approved: ''
   },
-  tos: null,                 // computed TOS object
-  questions: [],             // generated question objects
+  tos: null,
+  questions: [],
   ai: { enabled: false, provider: 'gemini', key: '', model: '' },
   chedCompetencies: null,
   nleBlueprint: null,
-  bloomTemplates: null
+  bloomTemplates: null,
+  aiGeneration: { running: false, cancelled: false, current: 0, total: 0 }
 };
 
 let coverageIdCounter = 1;
@@ -69,7 +72,7 @@ function el(tag, attrs = {}, children = []) {
 
 function pct(part, whole) {
   if (!whole) return 0;
-  return Math.round((part / whole) * 1000) / 10; // 1 decimal
+  return Math.round((part / whole) * 1000) / 10;
 }
 
 function uid() {
@@ -83,6 +86,140 @@ function download(filename, content, type = 'application/json') {
 
 function sanitizeFilename(s) {
   return (s || 'project').replace(/[^a-z0-9\-_.]+/gi, '_').slice(0, 80);
+}
+
+function refreshIcons() {
+  if (window.lucide && typeof lucide.createIcons === 'function') {
+    lucide.createIcons();
+  }
+}
+
+function updateThemeIcon(theme) {
+  const btn = document.getElementById('btn-theme');
+  if (!btn) return;
+  const icon = theme === 'dark' ? 'sun' : 'moon';
+  btn.innerHTML = `<i data-lucide="${icon}"></i>`;
+  refreshIcons();
+}
+
+/* --------------------------------------------------
+   SECTION 1A — TOASTS (Feature C)
+-------------------------------------------------- */
+
+function showToast(type, title, message = '', duration = 4000) {
+  const container = $('#toast-container');
+  if (!container) return;
+
+  const icons = {
+    success: 'check-circle-2',
+    error:   'x-circle',
+    warning: 'alert-triangle',
+    info:    'info'
+  };
+
+  const toast = el('div', { class: 'toast toast-' + type });
+  toast.appendChild(el('div', { class: 'toast-icon' },
+    el('i', { 'data-lucide': icons[type] || 'info' })
+  ));
+  const body = el('div', { class: 'toast-body' });
+  body.appendChild(el('div', { class: 'toast-title' }, title));
+  if (message) body.appendChild(el('div', { class: 'toast-msg' }, message));
+  toast.appendChild(body);
+
+  const closeBtn = el('button', { class: 'toast-close', 'aria-label': 'Close' },
+    el('i', { 'data-lucide': 'x' })
+  );
+  closeBtn.addEventListener('click', () => dismiss());
+  toast.appendChild(closeBtn);
+
+  container.appendChild(toast);
+  refreshIcons();
+
+  const timer = setTimeout(dismiss, duration);
+  function dismiss() {
+    clearTimeout(timer);
+    toast.classList.add('toast-out');
+    setTimeout(() => toast.remove(), 300);
+  }
+
+  return { dismiss };
+}
+
+/* --------------------------------------------------
+   SECTION 1B — DASHBOARD (Feature D)
+-------------------------------------------------- */
+
+function updateDashboard() {
+  const subj = $('#dash-subject');
+  const term = $('#dash-term');
+  const items = $('#dash-items');
+  const hours = $('#dash-hours');
+  const status = $('#dash-status');
+  const statusIcon = $('#dash-status-icon');
+
+  if (subj) subj.textContent = state.subject || 'Untitled Subject';
+  if (term) term.textContent = state.term === 'FINAL' ? 'Final Term' : 'Midterm';
+  if (items) items.textContent = String(state.totalItems || 0);
+  if (hours) hours.textContent = String(state.totalHours || 0);
+
+  let lower = 0, higher = 0;
+  BLOOM_LEVELS.forEach(b => {
+    const v = +state.bloom[b.key] || 0;
+    if (b.category === 'lower') lower += v;
+    else higher += v;
+  });
+
+  const lowerBar = $('#dash-bloom-lower');
+  const higherBar = $('#dash-bloom-higher');
+  const lowerLbl = $('#dash-bloom-lower-label');
+  const higherLbl = $('#dash-bloom-higher-label');
+
+  if (lowerBar && lower > 0) {
+    lowerBar.style.width = lower + '%';
+    lowerLbl.textContent = lower + '%';
+  } else if (lowerBar) {
+    lowerBar.style.width = '0%';
+    lowerLbl.textContent = '';
+  }
+  if (higherBar && higher > 0) {
+    higherBar.style.width = higher + '%';
+    higherLbl.textContent = higher + '%';
+  } else if (higherBar) {
+    higherBar.style.width = '0%';
+    higherLbl.textContent = '';
+  }
+
+  const total = lower + higher;
+  let level = 'ok';
+  let label = 'Ready';
+  let icon = 'shield-check';
+
+  if (!state.subject || !state.totalItems) {
+    level = 'warn';
+    label = 'Incomplete';
+    icon = 'alert-triangle';
+  } else if (total !== 100) {
+    level = 'err';
+    label = 'Bloom ≠ 100%';
+    icon = 'alert-octagon';
+  } else if (lower > 30 || higher < 70) {
+    level = 'warn';
+    label = 'Off 30/70';
+    icon = 'alert-triangle';
+  } else {
+    label = 'Valid 30/70';
+    icon = 'shield-check';
+  }
+
+  if (status) {
+    status.textContent = label;
+    status.className = 'dash-value dash-' + level;
+  }
+  if (statusIcon) {
+    statusIcon.innerHTML = `<i data-lucide="${icon}"></i>`;
+  }
+
+  refreshIcons();
 }
 
 /* --------------------------------------------------
@@ -99,10 +236,9 @@ async function loadDataFiles() {
     state.chedCompetencies = ched;
     state.nleBlueprint = nle;
     state.bloomTemplates = bloom;
-    console.log('[data] loaded', { ched, nle, bloom });
+    console.log('[data] loaded');
   } catch (err) {
-    console.warn('[data] failed to load (opening as file:// ?)', err);
-    // Fallbacks so app still runs
+    console.warn('[data] failed to load (file:// mode?)', err);
     state.chedCompetencies = { core_competency_areas: [] };
     state.nleBlueprint = { exam_parts: [] };
     state.bloomTemplates = { levels: {} };
@@ -131,6 +267,83 @@ function persistProject() {
   localStorage.setItem('tos_project', JSON.stringify(serializeProject()));
 }
 
+function loadTheme() {
+  const saved = localStorage.getItem('tos_theme') || 'light';
+  document.body.dataset.theme = saved;
+  updateThemeIcon(saved);
+}
+
+function bindThemeToggle() {
+  const btn = $('#btn-theme');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    const current = document.body.dataset.theme;
+    const next = current === 'light' ? 'dark' : 'light';
+    document.body.dataset.theme = next;
+    localStorage.setItem('tos_theme', next);
+    updateThemeIcon(next);
+  });
+}
+
+/* --------------------------------------------------
+   SECTION 2A — WELCOME MODAL (Feature B)
+-------------------------------------------------- */
+
+function showWelcome(force = false) {
+  const hide = localStorage.getItem('tos_hide_welcome') === '1';
+  if (hide && !force) return;
+
+  const modal = $('#welcome-modal');
+  if (!modal) return;
+  modal.hidden = false;
+  refreshIcons();
+
+  const close = () => { modal.hidden = true; };
+
+  $('#btn-close-welcome').onclick = close;
+  $('#btn-start-welcome').onclick = () => {
+    if ($('#chk-hide-welcome').checked) {
+      localStorage.setItem('tos_hide_welcome', '1');
+    }
+    close();
+  };
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) close();
+  });
+}
+
+/* --------------------------------------------------
+   SECTION 2B — AI PROGRESS OVERLAY (Feature A)
+-------------------------------------------------- */
+
+function showProgress(current, total, sub = 'Generating…') {
+  const overlay = $('#progress-overlay');
+  const pctEl = $('#progress-percent');
+  const subEl = $('#progress-sub');
+  const detEl = $('#progress-detail');
+  const circle = $('#progress-circle');
+  if (!overlay) return;
+
+  overlay.hidden = false;
+  const p = total > 0 ? Math.round((current / total) * 100) : 0;
+
+  if (pctEl) pctEl.textContent = p + '%';
+  if (subEl) subEl.textContent = sub;
+  if (detEl) detEl.textContent = `Item ${current} of ${total}`;
+
+  if (circle) {
+    const circumference = 2 * Math.PI * 20;
+    const offset = circumference - (p / 100) * circumference;
+    circle.style.strokeDasharray = String(circumference);
+    circle.style.strokeDashoffset = String(offset);
+  }
+}
+
+function hideProgress() {
+  const overlay = $('#progress-overlay');
+  if (overlay) overlay.hidden = true;
+}
+
 /* --------------------------------------------------
    SECTION 3 — COVERAGE AREA EDITOR
 -------------------------------------------------- */
@@ -146,7 +359,6 @@ function ensureCoverage() {
 }
 
 function recomputeCoverageItems() {
-  // Item distribution across coverage areas proportional to hours
   const totalHours = state.coverage.reduce((s, c) => s + (+c.hours || 0), 0);
   const totalItems = state.totalItems;
   if (!totalHours || !totalItems) return;
@@ -194,7 +406,7 @@ function renderCoverageTable() {
     row.appendChild(el('td', { class: 'ro' }, String(c.items || 0)));
     row.appendChild(el('td', {},
       el('button', {
-        class: 'btn btn-small btn-ghost',
+        class: 'btn btn-sm btn-ghost',
         onclick: () => {
           state.coverage.splice(i, 1);
           ensureCoverage();
@@ -208,8 +420,7 @@ function renderCoverageTable() {
     tbody.appendChild(row);
   });
 
-  // Total row
-  const tr = el('tr', { style: 'background:#eef1f5;font-weight:700' });
+  const tr = el('tr', { style: 'background:var(--surface-2);font-weight:700' });
   tr.appendChild(el('td', {}, ''));
   tr.appendChild(el('td', {}, 'TOTAL'));
   tr.appendChild(el('td', { class: 'ro' }, String(totalHours)));
@@ -217,6 +428,7 @@ function renderCoverageTable() {
   tr.appendChild(el('td', { class: 'ro' }, String(state.totalItems)));
   tr.appendChild(el('td', {}, ''));
   tbody.appendChild(tr);
+  refreshIcons();
 }
 
 /* --------------------------------------------------
@@ -245,6 +457,7 @@ function renderBloomSliders() {
       oninput: (e) => {
         state.bloom[b.key] = +e.target.value;
         updateBloomSummary();
+        updateDashboard();
         recomputeTOS();
         persistProject();
       }
@@ -255,6 +468,8 @@ function renderBloomSliders() {
     wrap.appendChild(row);
   });
   updateBloomSummary();
+  updateDashboard();
+  refreshIcons();
 }
 
 function updateBloomSummary() {
@@ -271,17 +486,14 @@ function updateBloomSummary() {
   $('#pct-lower').textContent  = lower + '%';
   $('#pct-higher').textContent = higher + '%';
 
-  // Update value labels
   $$('.bloom-value').forEach(span => {
     span.textContent = (state.bloom[span.dataset.key] || 0) + '%';
   });
 
-  // Total indicator
   const totalEl = $('#bloom-total');
   totalEl.className = 'alert ' + (total === 100 ? 'alert-info' : 'alert-danger');
   totalEl.textContent = `Total: ${total}%` + (total === 100 ? '' : ' — must equal 100%');
 
-  // Warnings
   const warn = $('#bloom-warning');
   const issues = [];
   if (total !== 100) issues.push(`Sliders total ${total}% — adjust to 100%.`);
@@ -305,7 +517,6 @@ function updateBloomSummary() {
 -------------------------------------------------- */
 
 function computeBloomItemCounts() {
-  // Convert Bloom % to item counts, ensuring sum = totalItems
   const counts = {};
   let assigned = 0;
   BLOOM_LEVELS.forEach((b, idx) => {
@@ -320,7 +531,6 @@ function computeBloomItemCounts() {
 }
 
 function assignItemNumbersToBloom(bloomCounts) {
-  // Sequential item numbers by Bloom level, in order R→U→Ap→An→Ev→Cr
   const ranges = {};
   let n = 1;
   BLOOM_LEVELS.forEach(b => {
@@ -383,8 +593,6 @@ function renderTOS() {
   const t = state.tos;
 
   const table = el('table');
-
-  // Header row 1
   const thead = el('thead');
   const r1 = el('tr');
   r1.appendChild(el('th', { rowspan: '2' }, 'Coverage'));
@@ -395,13 +603,11 @@ function renderTOS() {
   r1.appendChild(el('th', { rowspan: '2' }, '% over Total Items'));
   thead.appendChild(r1);
 
-  // Header row 2 — Bloom levels
   const r2 = el('tr');
   BLOOM_LEVELS.forEach(b => r2.appendChild(el('th', {}, b.key)));
   thead.appendChild(r2);
   table.appendChild(thead);
 
-  // Body
   const tbody = el('tbody');
   t.coverage.forEach((c, ci) => {
     const row = el('tr');
@@ -409,8 +615,6 @@ function renderTOS() {
     row.appendChild(el('td', {}, String(c.hours)));
     row.appendChild(el('td', {}, c.percentHours + '%'));
 
-    // Distribute Bloom item numbers within this coverage area
-    // Simple approach: proportional slicing of each Bloom range to each area
     BLOOM_LEVELS.forEach(b => {
       const bInfo = t.bloom.find(x => x.key === b.key);
       const range = bInfo.itemRange;
@@ -418,7 +622,6 @@ function renderTOS() {
         row.appendChild(el('td', {}, '—'));
         return;
       }
-      // Slice range by coverage ratio
       const totalCovItems = t.coverage.reduce((s, x) => s + x.items, 0);
       const covShare = c.items / totalCovItems;
       const totalBloomItems = range[1] - range[0] + 1;
@@ -440,7 +643,6 @@ function renderTOS() {
     tbody.appendChild(row);
   });
 
-  // Item Placement row
   const placementRow = el('tr', { class: 'total-row' });
   placementRow.appendChild(el('td', { class: 'left' }, 'Item Placement'));
   placementRow.appendChild(el('td', {}, ''));
@@ -454,7 +656,6 @@ function renderTOS() {
   placementRow.appendChild(el('td', {}, '100%'));
   tbody.appendChild(placementRow);
 
-  // TOTAL row
   const totalRow = el('tr', { class: 'total-row' });
   totalRow.appendChild(el('td', { class: 'left' }, 'TOTAL'));
   totalRow.appendChild(el('td', {}, String(t.totalHours)));
@@ -467,7 +668,6 @@ function renderTOS() {
   totalRow.appendChild(el('td', {}, '100%'));
   tbody.appendChild(totalRow);
 
-  // Percentage row
   const pctRow = el('tr', { class: 'pct-row' });
   pctRow.appendChild(el('td', { class: 'left' }, 'Percentage'));
   pctRow.appendChild(el('td', {}, ''));
@@ -480,7 +680,6 @@ function renderTOS() {
   pctRow.appendChild(el('td', {}, ''));
   tbody.appendChild(pctRow);
 
-  // Lower / Higher summary row
   const summaryRow = el('tr');
   summaryRow.appendChild(el('td', { class: 'left', colspan: '3' },
     `Lower-Order: ${t.lowerPercent}%`));
@@ -494,13 +693,12 @@ function renderTOS() {
   container.innerHTML = '';
   container.appendChild(table);
 
-  // Signatories
   const sigs = el('div', { class: 'signatories' });
   const addSig = (label, value) => {
     if (!value) return;
     const [name, role] = value.split('—').map(s => (s || '').trim());
     sigs.appendChild(el('div', { class: 'sig-block' }, [
-      el('div', { style: 'font-size:11px;color:#5a6675;text-transform:uppercase;font-weight:700;letter-spacing:.04em' }, label),
+      el('div', { class: 'sig-label' }, label),
       el('div', { class: 'sig-name' }, name || ''),
       role ? el('div', { class: 'sig-role' }, role) : null
     ]));
@@ -512,7 +710,6 @@ function renderTOS() {
   addSig('Approved by', state.signatories.approved);
   container.appendChild(sigs);
 
-  // Warnings
   const warnBox = $('#tos-warnings');
   warnBox.innerHTML = '';
   const issues = [];
@@ -525,6 +722,8 @@ function renderTOS() {
     warnBox.appendChild(el('div', { class: 'alert alert-success' },
       '✅ TOS validated: 30/70 rule satisfied.'));
   }
+  refreshIcons();
+  updateDashboard();
 }
 
 /* --------------------------------------------------
@@ -532,13 +731,11 @@ function renderTOS() {
 -------------------------------------------------- */
 
 function buildEmptyQuestions() {
-  // One slot per TOS item
   const t = state.tos || computeTOS();
   const list = [];
   let n = 1;
   t.bloom.forEach(b => {
     for (let i = 0; i < b.itemCount; i++) {
-      // Assign coverage area by proportional slicing
       const covIdx = pickCoverageForItem(n, t);
       list.push({
         id: uid(),
@@ -554,7 +751,7 @@ function buildEmptyQuestions() {
         options: { A: '', B: '', C: '', D: '' },
         answer: 'A',
         rationale: '',
-        status: 'empty'   // empty | generating | done | error
+        status: 'empty'
       });
       n++;
     }
@@ -563,7 +760,6 @@ function buildEmptyQuestions() {
 }
 
 function pickCoverageForItem(itemNo, t) {
-  // Determine which coverage area this item belongs to by cumulative items
   let acc = 0;
   for (let i = 0; i < t.coverage.length; i++) {
     acc += t.coverage[i].items;
@@ -583,6 +779,7 @@ function renderQuestions() {
   state.questions.forEach((q, idx) => {
     wrap.appendChild(renderQuestionCard(q, idx));
   });
+  refreshIcons();
 }
 
 function renderQuestionCard(q, idx) {
@@ -592,23 +789,20 @@ function renderQuestionCard(q, idx) {
                       : q.status === 'empty' ? 'empty' : '')
   });
 
-  // Meta row
   const meta = el('div', { class: 'q-meta' });
-  meta.appendChild(el('span', { class: 'tag' }, 'Item ' + q.itemNo));
-  meta.appendChild(el('span', { class: 'tag bloom' }, q.bloom));
+  meta.appendChild(el('span', { class: 'tag tag-item' }, 'Item ' + q.itemNo));
+  meta.appendChild(el('span', { class: 'tag tag-bloom' }, q.bloom));
   meta.appendChild(el('span', {
-    class: 'tag ' + (q.category === 'higher' ? 'level-higher' : 'level-lower')
+    class: 'tag ' + (q.category === 'higher' ? 'tag-higher' : 'tag-lower')
   }, q.category === 'higher' ? 'Higher-Order' : 'Lower-Order'));
   meta.appendChild(el('span', { class: 'tag' }, 'Style ' + q.style));
-  if (q.coverageTitle) meta.appendChild(el('span', { class: 'tag' }, q.coverageTitle));
+  if (q.coverageTitle) meta.appendChild(el('span', { class: 'tag tag-coverage' }, q.coverageTitle));
   card.appendChild(meta);
 
-  // Stem
   card.appendChild(el('div', { class: 'q-stem', contenteditable: 'true',
     oninput: (e) => { q.stem = e.target.textContent; persistProject(); }
   }, q.stem || '[Stem not yet generated]'));
 
-  // Options
   const opts = el('div', { class: 'q-options' });
   ['A', 'B', 'C', 'D'].forEach(letter => {
     const opt = el('div', { class: 'q-option' });
@@ -621,7 +815,6 @@ function renderQuestionCard(q, idx) {
   });
   card.appendChild(opts);
 
-  // Answer row
   const ans = el('div', { class: 'q-answer-row' });
   ans.appendChild(el('label', {}, 'Answer'));
   const ansSel = el('select', {
@@ -634,51 +827,51 @@ function renderQuestionCard(q, idx) {
   });
   ans.appendChild(ansSel);
 
-  // CHED competency dropdown
   ans.appendChild(el('label', {}, 'CHED'));
   const chedSel = el('select', {
     onchange: (e) => { q.chedCompetency = e.target.value; persistProject(); }
   });
   chedSel.appendChild(el('option', { value: '' }, '— select —'));
   (state.chedCompetencies.core_competency_areas || []).forEach(c => {
-    const o = el('option', { value: c.code + ' — ' + c.name }, c.code + ' — ' + c.name);
-    if (q.chedCompetency === c.code + ' — ' + c.name) o.selected = true;
+    const val = c.code + ' — ' + c.name;
+    const o = el('option', { value: val }, val);
+    if (q.chedCompetency === val) o.selected = true;
     chedSel.appendChild(o);
   });
   ans.appendChild(chedSel);
 
-  // NLE blueprint dropdown
   ans.appendChild(el('label', {}, 'NLE'));
   const nleSel = el('select', {
     onchange: (e) => { q.nleBlueprint = e.target.value; persistProject(); }
   });
   nleSel.appendChild(el('option', { value: '' }, '— select —'));
   (state.nleBlueprint.exam_parts || []).forEach(p => {
-    const o = el('option', { value: p.code + ' — ' + p.name }, p.code + ' — ' + p.name);
-    if (q.nleBlueprint === p.code + ' — ' + p.name) o.selected = true;
+    const val = p.code + ' — ' + p.name;
+    const o = el('option', { value: val }, val);
+    if (q.nleBlueprint === val) o.selected = true;
     nleSel.appendChild(o);
   });
   ans.appendChild(nleSel);
   card.appendChild(ans);
 
-  // Rationale
   const rat = el('div', { class: 'q-rationale' });
-  rat.appendChild(el('div', { class: 'q-rationale-label' }, 'Rationale'));
+  rat.appendChild(el('div', { class: 'q-rationale-label' }, [
+    el('i', { 'data-lucide': 'lightbulb' }), document.createTextNode(' Rationale')
+  ]));
   rat.appendChild(el('div', {
     contenteditable: 'true',
     oninput: (e) => { q.rationale = e.target.textContent; persistProject(); }
   }, q.rationale || '[No rationale yet]'));
   card.appendChild(rat);
 
-  // Actions
   const actions = el('div', { class: 'q-card-actions' });
   actions.appendChild(el('button', {
-    class: 'btn btn-small btn-ghost',
+    class: 'btn btn-sm btn-ghost',
     onclick: () => generateOneTemplate(q, idx)
   }, '⚡ Regenerate (Template)'));
   if (state.ai.enabled) {
     actions.appendChild(el('button', {
-      class: 'btn btn-small btn-secondary',
+      class: 'btn btn-sm btn-secondary',
       onclick: () => generateOneAI(q, idx)
     }, '🤖 Regenerate (AI)'));
   }
@@ -697,69 +890,33 @@ function fillPlaceholders(template, q) {
   const cov = q.coverageTitle || 'the topic';
   const replacements = {
     '{age}': String(20 + Math.floor(Math.random() * 50)),
-    '{structure}': cov,
-    '{term}': cov,
-    '{definition}': cov,
-    '{description}': cov,
-    '{concept}': cov,
-    '{purpose}': 'assessment',
-    '{function}': 'normal function',
-    '{symptom}': 'a related complaint',
-    '{finding}': 'an assessment finding',
-    '{condition}': cov,
-    '{procedure}': 'the nursing assessment',
-    '{tool}': 'the appropriate instrument',
-    '{system}': cov,
-    '{structure|function}': cov,
-    '{structure|process}': cov,
-    '{tool|structure|term}': cov,
-    '{normal|abnormal}': 'normal',
+    '{structure}': cov, '{term}': cov, '{definition}': cov,
+    '{description}': cov, '{concept}': cov, '{purpose}': 'assessment',
+    '{function}': 'normal function', '{symptom}': 'a related complaint',
+    '{finding}': 'an assessment finding', '{condition}': cov,
+    '{procedure}': 'the nursing assessment', '{tool}': 'the appropriate instrument',
+    '{system}': cov, '{structure|function}': cov, '{structure|process}': cov,
+    '{tool|structure|term}': cov, '{normal|abnormal}': 'normal',
     '{care plan|teaching plan|discharge plan}': 'care plan',
     '{nursing intervention|teaching strategy}': 'nursing intervention',
     '{care plan|community program}': 'care plan',
-    '{population}': 'the target population',
-    '{barrier}': 'a learning barrier',
-    '{chief_complaint}': 'a related complaint',
-    '{complaint}': 'a related complaint',
-    '{data}': 'assessment data',
-    '{findings}': 'assessment findings',
-    '{age_group}': 'adult',
-    '{phenomenon}': 'the observed finding',
-    '{topic}': cov
+    '{population}': 'the target population', '{barrier}': 'a learning barrier',
+    '{chief_complaint}': 'a related complaint', '{complaint}': 'a related complaint',
+    '{data}': 'assessment data', '{findings}': 'assessment findings',
+    '{age_group}': 'adult', '{phenomenon}': 'the observed finding', '{topic}': cov
   };
   let out = template;
-  for (const [k, v] of Object.entries(replacements)) {
-    out = out.split(k).join(v);
-  }
-  // clean leftover {..}
-  out = out.replace(/\{[^}]+\}/g, cov);
-  return out;
+  for (const [k, v] of Object.entries(replacements)) out = out.split(k).join(v);
+  return out.replace(/\{[^}]+\}/g, cov);
 }
 
 function generateOneTemplate(q, idx) {
   const tpls = state.bloomTemplates.levels[q.bloom]?.stem_templates || [];
-  if (tpls.length === 0) {
-    q.stem = '[No template available for ' + q.bloom + ']';
-  } else {
-    q.stem = fillPlaceholders(pick(tpls), q);
-  }
+  q.stem = tpls.length ? fillPlaceholders(pick(tpls), q) : '[No template available]';
 
-  // Generate plausible options
   const cov = q.coverageTitle || 'the topic';
-  const genericOpts = {
-    A: 'An unrelated structure or concept',
-    B: cov + ' — correct answer placeholder',
-    C: 'A distractor related to ' + cov,
-    D: 'Another plausible distractor'
-  };
-
   if (q.category === 'lower') {
-    q.options = {
-      A: 'Unrelated option 1',
-      B: cov + ' (correct)',
-      C: 'Unrelated option 2',
-      D: 'Unrelated option 3'
-    };
+    q.options = { A: 'Unrelated option 1', B: cov + ' (correct)', C: 'Unrelated option 2', D: 'Unrelated option 3' };
     q.answer = 'B';
   } else {
     q.options = {
@@ -770,27 +927,22 @@ function generateOneTemplate(q, idx) {
     };
     q.answer = 'C';
   }
-
   q.rationale =
     `[Template-generated] Correct answer: ${q.answer}. ` +
-    `This item tests ${q.bloom}-level thinking on "${cov}". ` +
-    `The correct option reflects the appropriate ${q.category === 'higher' ? 'clinical judgment and priority action' : 'recall or understanding'} ` +
-    `for this topic, while the distractors represent plausible but incorrect alternatives. ` +
-    `Edit this rationale to add specific content details.`;
-
+    `This item tests ${q.bloom}-level thinking on "${cov}". Edit to add content-specific details.`;
   q.status = 'done';
   persistProject();
   refreshQuestionCard(idx);
 }
 
 /* --------------------------------------------------
-   SECTION 7B — AI GENERATION
+   SECTION 7B — AI GENERATION (with progress overlay)
 -------------------------------------------------- */
 
-async function generateOneAI(q, idx) {
+async function generateOneAI(q, idx, silent = false) {
   if (!state.ai.enabled || !state.ai.key) {
-    alert('AI mode is enabled, but no API key is set. Open the AI config first.');
-    return;
+    if (!silent) showToast('warning', 'AI not configured', 'Enable AI mode and enter an API key.');
+    return false;
   }
 
   q.status = 'generating';
@@ -800,38 +952,91 @@ async function generateOneAI(q, idx) {
 
   try {
     let text = '';
-    if (state.ai.provider === 'gemini') {
-      text = await callGemini(prompt);
-    } else {
-      text = await callOpenAI(prompt);
-    }
+    if (state.ai.provider === 'gemini') text = await callGemini(prompt);
+    else text = await callOpenAI(prompt);
+
     const parsed = parseAIResponse(text, q);
     if (parsed) {
       Object.assign(q, parsed);
       q.status = 'done';
+      persistProject();
+      refreshQuestionCard(idx);
+      return true;
     } else {
       q.status = 'error';
-      q.rationale = 'AI returned an unparseable response. Raw:\n' + text.slice(0, 500);
+      q.rationale = 'AI returned unparseable response.';
+      persistProject();
+      refreshQuestionCard(idx);
+      return false;
     }
   } catch (err) {
     console.error(err);
     q.status = 'error';
     q.rationale = 'AI error: ' + err.message;
+    persistProject();
+    refreshQuestionCard(idx);
+    return false;
   }
-  persistProject();
-  refreshQuestionCard(idx);
 }
 
 async function generateAllAI() {
   if (!state.ai.enabled || !state.ai.key) {
-    alert('Enable AI mode and enter an API key first.');
+    showToast('warning', 'AI not configured', 'Enable AI mode and enter an API key first.');
     return;
   }
+  if (state.aiGeneration.running) return;
+
+  const pending = state.questions.filter(q => q.status !== 'done');
+  if (pending.length === 0) {
+    showToast('info', 'Nothing to generate', 'All items are already generated.');
+    return;
+  }
+
+  state.aiGeneration = { running: true, cancelled: false, current: 0, total: pending.length };
+
+  showProgress(0, pending.length, 'Starting AI generation…');
+
+  let success = 0;
   for (let i = 0; i < state.questions.length; i++) {
+    if (state.aiGeneration.cancelled) break;
     const q = state.questions[i];
     if (q.status === 'done') continue;
-    await generateOneAI(q, i);
+
+    state.aiGeneration.current++;
+    showProgress(
+      state.aiGeneration.current - 1,
+      pending.length,
+      `Generating "${q.bloom}" item ${q.itemNo}…`
+    );
+
+    const ok = await generateOneAI(q, i, true);
+    if (ok) success++;
+
+    showProgress(
+      state.aiGeneration.current,
+      pending.length,
+      `Item ${q.itemNo} complete`
+    );
   }
+
+  const wasCancelled = state.aiGeneration.cancelled;
+  state.aiGeneration.running = false;
+  hideProgress();
+
+  if (wasCancelled) {
+    showToast('warning', 'Generation cancelled', `Completed ${success} of ${pending.length} items.`);
+  } else {
+    showToast('success', 'AI generation complete', `Generated ${success} of ${pending.length} items.`);
+  }
+}
+
+function bindProgressCancel() {
+  const btn = $('#btn-cancel-ai');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    state.aiGeneration.cancelled = true;
+    showToast('info', 'Cancelling…', 'Stopping after current item.');
+  });
 }
 
 function buildPromptForQuestion(q) {
@@ -849,18 +1054,17 @@ Generate ONE multiple-choice question aligned with:
 
 Rules:
 - Exactly 4 options (A, B, C, D).
-- For lower-order (Remembering/Understanding/Applying): short-phrase options.
-- For higher-order (Analyzing/Evaluating/Creating): full-sentence options, NLE scenario style.
+- For lower-order: short-phrase options.
+- For higher-order: full-sentence options, NLE scenario style.
 - No "all of the above" or "none of the above".
 - One best answer only.
-- Distractors must be plausible but clearly incorrect to an expert.
 
-Return ONLY valid JSON in this shape (no prose, no markdown fences):
+Return ONLY valid JSON (no prose, no markdown):
 {
   "stem": "...",
   "options": { "A": "...", "B": "...", "C": "...", "D": "..." },
   "answer": "A|B|C|D",
-  "rationale": "3-6 sentences explaining the correct answer and why each distractor is wrong.",
+  "rationale": "3-6 sentences.",
   "ched_competency": "CC-XX — Name",
   "nle_blueprint": "NP-X — Name"
 }`;
@@ -907,27 +1111,21 @@ async function callOpenAI(prompt) {
 
 function parseAIResponse(text, q) {
   try {
-    const clean = text.trim()
-      .replace(/^```json\s*/i, '').replace(/```$/i, '').trim();
+    const clean = text.trim().replace(/^```json\s*/i, '').replace(/```$/i, '').trim();
     const obj = JSON.parse(clean);
     if (!obj.stem || !obj.options) return null;
     return {
       stem: obj.stem,
       options: {
-        A: obj.options.A || '',
-        B: obj.options.B || '',
-        C: obj.options.C || '',
-        D: obj.options.D || ''
+        A: obj.options.A || '', B: obj.options.B || '',
+        C: obj.options.C || '', D: obj.options.D || ''
       },
       answer: (obj.answer || 'A').toUpperCase().slice(0, 1),
       rationale: obj.rationale || '',
       chedCompetency: obj.ched_competency || q.chedCompetency,
       nleBlueprint: obj.nle_blueprint || q.nleBlueprint
     };
-  } catch (err) {
-    console.warn('Parse error', err);
-    return null;
-  }
+  } catch { return null; }
 }
 
 function refreshQuestionCard(idx) {
@@ -939,6 +1137,7 @@ function refreshQuestionCard(idx) {
   } else {
     renderQuestions();
   }
+  refreshIcons();
 }
 
 /* --------------------------------------------------
@@ -946,27 +1145,23 @@ function refreshQuestionCard(idx) {
 -------------------------------------------------- */
 
 function makeDocxParagraph(text, opts = {}) {
-  const { Document, Paragraph, TextRun, AlignmentType, HeadingLevel } = docx;
+  const { Paragraph, TextRun, AlignmentType } = docx;
   return new Paragraph({
     alignment: opts.align || AlignmentType.LEFT,
     heading: opts.heading,
     spacing: { after: opts.after ?? 120 },
     children: [new TextRun({
-      text,
-      bold: !!opts.bold,
-      italics: !!opts.italic,
-      size: opts.size || 22,
-      font: opts.font || 'Calibri'
+      text, bold: !!opts.bold, italics: !!opts.italic,
+      size: opts.size || 22, font: opts.font || 'Calibri'
     })]
   });
 }
 
 async function exportTOSDocx() {
-  const { Document, Packer, Paragraph, Table, TableRow, TableCell, WidthType,
-          AlignmentType, TextRun, BorderStyle } = docx;
+  const { Document, Packer, Paragraph, Table, TableRow, TableCell,
+          WidthType, AlignmentType, TextRun } = docx;
   const t = state.tos || computeTOS();
 
-  // Header
   const headerParas = [
     makeDocxParagraph(state.institution || '', { bold: true, align: AlignmentType.CENTER }),
     makeDocxParagraph('TABLE OF SPECIFICATIONS', { bold: true, size: 28, align: AlignmentType.CENTER }),
@@ -976,14 +1171,6 @@ async function exportTOSDocx() {
     new Paragraph({ text: '' })
   ];
 
-  // Build table (11 columns)
-  const headers1 = ['Coverage', 'No. of Hours', '% over Total Hours',
-                    'Levels of Thinking', '', '', '', '', '',
-                    'Total No. of Items', '% over Total Items'];
-  const headers2 = ['', '', '',
-                    'Remembering', 'Understanding', 'Applying',
-                    'Analyzing', 'Evaluating', 'Creating', '', ''];
-
   const cell = (text, opts = {}) => new TableCell({
     width: { size: opts.width || 10, type: WidthType.PERCENTAGE },
     children: [new Paragraph({
@@ -992,29 +1179,21 @@ async function exportTOSDocx() {
     })]
   });
 
-  const makeRow = (cells) => new TableRow({
-    children: cells.map(c => cell(c.text, c))
-  });
-
   const bodyRows = [];
 
-  // Row 1
   bodyRows.push(new TableRow({
     children: [
       cell('Coverage', { bold: true, width: 18 }),
       cell('No. of Hours', { bold: true, width: 8 }),
       cell('% over Total Hours', { bold: true, width: 9 }),
       cell('Levels of Thinking', { bold: true, width: 45 }),
-      cell('', { width: 5 }),
-      cell('', { width: 5 }),
-      cell('', { width: 5 }),
-      cell('', { width: 5 }),
-      cell('', { width: 5 }),
+      cell('', { width: 5 }), cell('', { width: 5 }),
+      cell('', { width: 5 }), cell('', { width: 5 }), cell('', { width: 5 }),
       cell('Total No. of Items', { bold: true, width: 8 }),
       cell('% over Total Items', { bold: true, width: 9 })
     ]
   }));
-  // Row 2 — Bloom levels
+
   bodyRows.push(new TableRow({
     children: [
       cell(''), cell(''), cell(''),
@@ -1025,14 +1204,12 @@ async function exportTOSDocx() {
     ]
   }));
 
-  // Coverage rows
   t.coverage.forEach((c, ci) => {
     const cells = [];
     cells.push(cell(c.title, { align: AlignmentType.LEFT }));
     cells.push(cell(c.hours));
     cells.push(cell(c.percentHours + '%'));
 
-    // Bloom cells
     BLOOM_LEVELS.forEach(b => {
       const bInfo = t.bloom.find(x => x.key === b.key);
       const range = bInfo.itemRange;
@@ -1055,7 +1232,6 @@ async function exportTOSDocx() {
     bodyRows.push(new TableRow({ children: cells }));
   });
 
-  // Item Placement row
   const placeRow = [
     cell('Item Placement', { bold: true, align: AlignmentType.LEFT }),
     cell(''), cell('')
@@ -1069,7 +1245,6 @@ async function exportTOSDocx() {
   placeRow.push(cell('100%'));
   bodyRows.push(new TableRow({ children: placeRow }));
 
-  // TOTAL row
   const totalRow = [
     cell('TOTAL', { bold: true, align: AlignmentType.LEFT }),
     cell(t.totalHours, { bold: true }),
@@ -1083,7 +1258,6 @@ async function exportTOSDocx() {
   totalRow.push(cell('100%', { bold: true }));
   bodyRows.push(new TableRow({ children: totalRow }));
 
-  // Percentage row
   const pctRow = [
     cell('Percentage', { bold: true, align: AlignmentType.LEFT }),
     cell(''), cell('')
@@ -1101,7 +1275,6 @@ async function exportTOSDocx() {
     rows: bodyRows
   });
 
-  // Signatories
   const sigParas = [new Paragraph({ text: '' })];
   const pushSig = (label, value) => {
     if (!value) return;
@@ -1117,19 +1290,13 @@ async function exportTOSDocx() {
   pushSig('Reviewed by:', state.signatories.reviewed3);
   pushSig('Approved by:', state.signatories.approved);
 
-  const doc = new Document({
-    sections: [{
-      children: [...headerParas, table, ...sigParas]
-    }]
-  });
-
+  const doc = new Document({ sections: [{ children: [...headerParas, table, ...sigParas] }] });
   const blob = await Packer.toBlob(doc);
   saveAs(blob, `TOS_${sanitizeFilename(state.subject)}_${state.term}.docx`);
 }
 
 async function exportExamDocx() {
-  const { Document, Packer, Paragraph, AlignmentType, TextRun } = docx;
-  const t = state.tos || computeTOS();
+  const { Document, Packer, Paragraph, AlignmentType } = docx;
 
   const paras = [
     makeDocxParagraph(state.institution || '', { bold: true, align: AlignmentType.CENTER }),
@@ -1152,7 +1319,7 @@ async function exportExamDocx() {
   ];
 
   state.questions.forEach(q => {
-    paras.push(makeDocxParagraph(`${q.itemNo}. ${q.stem || '[stem pending]'}`, { bold: false }));
+    paras.push(makeDocxParagraph(`${q.itemNo}. ${q.stem || '[stem pending]'}`, {}));
     ['A', 'B', 'C', 'D'].forEach(L => {
       paras.push(makeDocxParagraph(`   ${L}. ${q.options[L] || ''}`, {}));
     });
@@ -1219,7 +1386,7 @@ async function exportAnswerKeyDocx() {
 
 function serializeProject() {
   return {
-    version: '1.0',
+    version: APP_VERSION,
     savedAt: new Date().toISOString(),
     subject: state.subject,
     term: state.term,
@@ -1254,11 +1421,18 @@ function restoreProject(data) {
 -------------------------------------------------- */
 
 function bindInputs() {
-  $('#input-subject').addEventListener('input', e => { state.subject = e.target.value; persistProject(); });
-  $('#input-term').addEventListener('change', e => { state.term = e.target.value; recomputeTOS(); persistProject(); });
-  $('#input-hours').addEventListener('input', e => { state.totalHours = +e.target.value || 0; persistProject(); });
+  $('#input-subject').addEventListener('input', e => {
+    state.subject = e.target.value; updateDashboard(); persistProject();
+  });
+  $('#input-term').addEventListener('change', e => {
+    state.term = e.target.value; updateDashboard(); recomputeTOS(); persistProject();
+  });
+  $('#input-hours').addEventListener('input', e => {
+    state.totalHours = +e.target.value || 0; updateDashboard(); persistProject();
+  });
   $('#input-items').addEventListener('input', e => {
     state.totalItems = +e.target.value || 0;
+    updateDashboard();
     recomputeCoverageItems();
     renderCoverageTable();
     recomputeTOS();
@@ -1267,7 +1441,6 @@ function bindInputs() {
   $('#input-institution').addEventListener('input', e => { state.institution = e.target.value; persistProject(); });
   $('#input-exam-title').addEventListener('input', e => { state.examTitle = e.target.value; persistProject(); });
 
-  // Signatories
   const sig = (id, key) => $('#' + id).addEventListener('input', e => {
     state.signatories[key] = e.target.value;
     renderTOS();
@@ -1279,7 +1452,6 @@ function bindInputs() {
   sig('sig-reviewed-3', 'reviewed3');
   sig('sig-approved', 'approved');
 
-  // Coverage add
   $('#btn-add-coverage').addEventListener('click', () => {
     state.coverage.push(newCoverage('Coverage Area ' + (state.coverage.length + 1)));
     recomputeCoverageItems();
@@ -1288,7 +1460,6 @@ function bindInputs() {
     persistProject();
   });
 
-  // Tabs
   $$('.tab').forEach(tab => {
     tab.addEventListener('click', () => {
       $$('.tab').forEach(t => t.classList.remove('active'));
@@ -1298,26 +1469,31 @@ function bindInputs() {
     });
   });
 
-  // Bloom tab → TOS recompute
-  // (handled in sliders)
-
-  // TOS actions
   $('#btn-recompute-tos').addEventListener('click', () => {
     recomputeTOS();
     buildEmptyQuestions();
     renderQuestions();
     persistProject();
+    showToast('success', 'TOS recomputed', `${state.totalItems} item slots prepared.`);
   });
   $('#btn-print-tos').addEventListener('click', () => window.print());
-  $('#btn-export-tos-docx').addEventListener('click', exportTOSDocx);
+  $('#btn-export-tos-docx').addEventListener('click', async () => {
+    try {
+      await exportTOSDocx();
+      showToast('success', 'TOS exported', 'Table of Specifications saved as .docx');
+    } catch (err) {
+      showToast('error', 'Export failed', err.message);
+    }
+  });
 
-  // Question generation
   $('#btn-generate-all-template').addEventListener('click', () => {
     if (state.questions.length === 0) buildEmptyQuestions();
+    let count = 0;
     state.questions.forEach((q, i) => {
-      if (q.status !== 'done') generateOneTemplate(q, i);
+      if (q.status !== 'done') { generateOneTemplate(q, i); count++; }
     });
     renderQuestions();
+    showToast('success', 'Template generation complete', `${count} item(s) generated.`);
   });
   $('#btn-generate-all-ai').addEventListener('click', () => {
     if (state.questions.length === 0) buildEmptyQuestions();
@@ -1328,37 +1504,53 @@ function bindInputs() {
       buildEmptyQuestions();
       renderQuestions();
       persistProject();
+      showToast('info', 'Questions cleared', 'All items reset to empty slots.');
     }
   });
 
-  // AI toggle + config
   $('#toggle-ai').addEventListener('change', e => {
     state.ai.enabled = e.target.checked;
     $('#ai-config').hidden = !state.ai.enabled;
     saveAISettings();
     renderQuestions();
+    showToast('info', 'AI mode ' + (e.target.checked ? 'enabled' : 'disabled'));
   });
   $('#ai-provider').addEventListener('change', e => { state.ai.provider = e.target.value; saveAISettings(); });
   $('#ai-key').addEventListener('input', e => { state.ai.key = e.target.value; saveAISettings(); });
   $('#ai-model').addEventListener('input', e => { state.ai.model = e.target.value; saveAISettings(); });
 
-  // Export tab
-  $('#btn-export-tos').addEventListener('click', exportTOSDocx);
-  $('#btn-export-exam').addEventListener('click', exportExamDocx);
-  $('#btn-export-answerkey').addEventListener('click', exportAnswerKeyDocx);
+  $('#btn-export-tos').addEventListener('click', async () => {
+    try {
+      await exportTOSDocx();
+      showToast('success', 'TOS downloaded', 'Saved as .docx');
+    } catch (err) { showToast('error', 'Export failed', err.message); }
+  });
+  $('#btn-export-exam').addEventListener('click', async () => {
+    try {
+      await exportExamDocx();
+      showToast('success', 'Exam downloaded', 'Saved as .docx');
+    } catch (err) { showToast('error', 'Export failed', err.message); }
+  });
+  $('#btn-export-answerkey').addEventListener('click', async () => {
+    try {
+      await exportAnswerKeyDocx();
+      showToast('success', 'Answer key downloaded', 'Saved as .docx');
+    } catch (err) { showToast('error', 'Export failed', err.message); }
+  });
   $('#btn-export-json').addEventListener('click', () => {
     download(
       `TOS_Project_${sanitizeFilename(state.subject)}_${state.term}.json`,
       JSON.stringify(serializeProject(), null, 2)
     );
+    showToast('success', 'Project exported', 'Saved as .json');
   });
 
-  // Save / Load / Reset
   $('#btn-save-project').addEventListener('click', () => {
     download(
       `TOS_Project_${sanitizeFilename(state.subject)}_${state.term}.json`,
       JSON.stringify(serializeProject(), null, 2)
     );
+    showToast('success', 'Project saved', 'Download started.');
   });
   $('#btn-load-project').addEventListener('click', () => $('#file-load-project').click());
   $('#file-load-project').addEventListener('change', async e => {
@@ -1373,18 +1565,23 @@ function bindInputs() {
       renderBloomSliders();
       recomputeTOS();
       renderQuestions();
+      updateDashboard();
       persistProject();
+      showToast('success', 'Project loaded', file.name);
     } catch (err) {
-      alert('Invalid project file: ' + err.message);
+      showToast('error', 'Invalid project file', err.message);
     }
   });
   $('#btn-reset').addEventListener('click', () => {
     if (!confirm('Reset all inputs to defaults?')) return;
     localStorage.removeItem('tos_project');
-    location.reload();
+    showToast('info', 'Resetting…', 'Reloading app.');
+    setTimeout(() => location.reload(), 600);
   });
 
-  // AI settings hydrate
+  $('#btn-help').addEventListener('click', () => showWelcome(true));
+  bindProgressCancel();
+
   $('#toggle-ai').checked = state.ai.enabled;
   $('#ai-config').hidden = !state.ai.enabled;
   $('#ai-provider').value = state.ai.provider;
@@ -1409,6 +1606,7 @@ function hydrateInputs() {
 async function boot() {
   await loadDataFiles();
   loadAISettings();
+  loadTheme();
   initBloomDefaults();
   loadProjectFromStorage();
   ensureCoverage();
@@ -1418,7 +1616,14 @@ async function boot() {
   recomputeTOS();
   renderQuestions();
   bindInputs();
-  console.log('[boot] ready', state);
+  bindThemeToggle();
+  updateDashboard();
+  refreshIcons();
+
+  // Show welcome modal on first visit
+  setTimeout(() => showWelcome(false), 400);
+
+  console.log(`[boot v${APP_VERSION}] ready`);
 }
 
 document.addEventListener('DOMContentLoaded', boot);
