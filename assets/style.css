@@ -44,6 +44,11 @@
   --transition: 200ms cubic-bezier(.4,0,.2,1);
 }
 
+/* =====================================================
+   FIX: Ensure the [hidden] attribute always hides elements
+   ===================================================== */
+[hidden] { display: none !important; }
+
 [data-theme="dark"] {
   --bg:        #0b1020;
   --surface:   #131a2c;
@@ -115,7 +120,6 @@ body {
   50%      { transform: translate(30px, -20px) scale(1.08); }
 }
 
-/* ---------- Header ---------- */
 .app-header {
   position: sticky;
   top: 0;
@@ -204,7 +208,6 @@ body {
 .icon-btn:active { transform: translateY(0); }
 .icon-btn svg { width: 18px; height: 18px; }
 
-/* ---------- Dashboard Bar (Feature D) ---------- */
 .dashboard {
   position: relative;
   z-index: 30;
@@ -292,7 +295,6 @@ body {
 #dash-status.dash-warn { color: var(--warning-600); }
 #dash-status.dash-err  { color: var(--danger-600); }
 
-/* ---------- Tabs ---------- */
 .tabs {
   position: sticky;
   top: 148px;
@@ -344,7 +346,6 @@ body {
   border-radius: 3px 3px 0 0;
 }
 
-/* ---------- Main ---------- */
 .app-main {
   position: relative;
   z-index: 1;
@@ -1090,7 +1091,7 @@ body {
 .footer-right strong { color: var(--text-2); }
 
 /* =====================================================
-   FEATURE A — Progress Overlay (AI generation)
+   FEATURE A — Progress Overlay
    ===================================================== */
 .progress-overlay {
   position: fixed;
@@ -1134,7 +1135,6 @@ body {
 }
 .spinner-fill {
   fill: none;
-  stroke: url(#gradient);
   stroke: var(--brand-500);
   stroke-width: 4;
   stroke-linecap: round;
@@ -1180,7 +1180,7 @@ body {
 }
 
 /* =====================================================
-   FEATURE B — Onboarding Modal
+   FEATURE B — Welcome Modal
    ===================================================== */
 .modal-overlay {
   position: fixed;
@@ -1339,7 +1339,7 @@ body {
 }
 
 /* =====================================================
-   FEATURE C — Toast Notifications
+   FEATURE C — Toasts
    ===================================================== */
 .toast-container {
   position: fixed;
