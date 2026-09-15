@@ -1,8 +1,8 @@
 /* =====================================================
-   TOS + NLE Question Generator — App Logic  (v1.2.0)
+   TOS Generator — App Logic  (v2.0.0)
    ===================================================== */
 
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '2.0.0';
 
 const BLOOM_LEVELS = [
   { key: 'Remembering',   order: 1, category: 'lower',  default: 10 },
@@ -13,22 +13,6 @@ const BLOOM_LEVELS = [
   { key: 'Creating',      order: 6, category: 'higher', default: 20 }
 ];
 
-/* Model catalog — only compatible / currently-available models */
-const MODEL_CATALOG = {
-  gemini: [
-    { id: 'gemini-3.6-flash',       label: 'Gemini 3.6 Flash (recommended)' },
-    { id: 'gemini-3.5-flash',       label: 'Gemini 3.5 Flash' },
-    { id: 'gemini-3.5-flash-lite',  label: 'Gemini 3.5 Flash Lite (fastest)' },
-    { id: 'gemini-3.1-flash-lite',  label: 'Gemini 3.1 Flash Lite' },
-    { id: 'gemini-2.5-pro',         label: 'Gemini 2.5 Pro (highest quality)' }
-  ],
-  openai: [
-    { id: 'gpt-4o-mini',  label: 'GPT-4o mini (recommended)' },
-    { id: 'gpt-4o',       label: 'GPT-4o' },
-    { id: 'gpt-4-turbo',  label: 'GPT-4 Turbo' }
-  ]
-};
-
 const state = {
   subject: '',
   term: 'MIDTERM',
@@ -38,14 +22,12 @@ const state = {
   examTitle: '',
   coverage: [],
   bloom: {},
-  signatories: { prepared: '', reviewed1: '', reviewed2: '', reviewed3: '', approved: '' },
+  signatories: {
+    prepared: '', reviewed1: '', reviewed2: '', reviewed3: '', approved: ''
+  },
   tos: null,
-  questions: [],
-  ai: { enabled: false, provider: 'gemini', key: '', model: 'gemini-3.6-flash' },
   chedCompetencies: null,
-  nleBlueprint: null,
-  bloomTemplates: null,
-  aiGeneration: { running: false, cancelled: false, current: 0, total: 0 }
+  nleBlueprint: null
 };
 
 let coverageIdCounter = 1;
@@ -73,34 +55,28 @@ function el(tag, attrs = {}, children = []) {
 }
 
 function pct(part, whole) { return whole ? Math.round((part / whole) * 1000) / 10 : 0; }
-function uid() { return 'id_' + Math.random().toString(36).slice(2, 9); }
 function download(filename, content, type = 'application/json') {
   saveAs(new Blob([content], { type }), filename);
 }
 function sanitizeFilename(s) { return (s || 'project').replace(/[^a-z0-9\-_.]+/gi, '_').slice(0, 80); }
 function refreshIcons() { if (window.lucide?.createIcons) lucide.createIcons(); }
-function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
-
 function updateThemeIcon(theme) {
-  const btn = $('#btn-theme');
-  if (!btn) return;
+  const btn = $('#btn-theme'); if (!btn) return;
   btn.innerHTML = `<i data-lucide="${theme === 'dark' ? 'sun' : 'moon'}"></i>`;
   refreshIcons();
 }
-
 function forceHideOverlays() {
-  ['#progress-overlay', '#welcome-modal'].forEach(sel => {
+  ['#prompt-modal', '#welcome-modal'].forEach(sel => {
     const node = $(sel);
     if (node) { node.hidden = true; node.style.display = 'none'; node.setAttribute('aria-hidden', 'true'); }
   });
 }
 
 /* --------------------------------------------------
-   Toasts
+   Toast
 -------------------------------------------------- */
-function showToast(type, title, message = '', duration = 4000) {
-  const container = $('#toast-container');
-  if (!container) return;
+function showToast(type, title, message = '', duration = 3500) {
+  const container = $('#toast-container'); if (!container) return;
   const icons = { success: 'check-circle-2', error: 'x-circle', warning: 'alert-triangle', info: 'info' };
   const toast = el('div', { class: 'toast toast-' + type });
   toast.appendChild(el('div', { class: 'toast-icon' }, el('i', { 'data-lucide': icons[type] || 'info' })));
@@ -131,6 +107,7 @@ function updateDashboard() {
   const hours = $('#dash-hours');
   const status = $('#dash-status');
   const statusIcon = $('#dash-status-icon');
+
   if (subj) subj.textContent = state.subject || 'Untitled Subject';
   if (term) term.textContent = state.term === 'FINAL' ? 'Final Term' : 'Midterm';
   if (items) items.textContent = String(state.totalItems || 0);
@@ -159,37 +136,26 @@ function updateDashboard() {
 }
 
 /* --------------------------------------------------
-   Data load
+   Data load (used for prompt building)
 -------------------------------------------------- */
 async function loadDataFiles() {
   try {
-    const [ched, nle, bloom] = await Promise.all([
+    const [ched, nle] = await Promise.all([
       fetch('data/ched-competencies.json').then(r => r.json()),
-      fetch('data/nle-blueprint.json').then(r => r.json()),
-      fetch('data/bloom-templates.json').then(r => r.json())
+      fetch('data/nle-blueprint.json').then(r => r.json())
     ]);
     state.chedCompetencies = ched;
     state.nleBlueprint = nle;
-    state.bloomTemplates = bloom;
   } catch (err) {
     console.warn('[data] failed', err);
     state.chedCompetencies = { core_competency_areas: [] };
     state.nleBlueprint = { exam_parts: [] };
-    state.bloomTemplates = { levels: {} };
   }
 }
 
-function loadAISettings() {
-  try {
-    const saved = JSON.parse(localStorage.getItem('tos_ai') || '{}');
-    state.ai = { ...state.ai, ...saved };
-  } catch {}
-}
-function saveAISettings() { localStorage.setItem('tos_ai', JSON.stringify(state.ai)); }
-function loadProjectFromStorage() {
-  try { const saved = JSON.parse(localStorage.getItem('tos_project') || 'null'); if (saved) restoreProject(saved); } catch {}
-}
-function persistProject() { localStorage.setItem('tos_project', JSON.stringify(serializeProject())); }
+/* --------------------------------------------------
+   Theme
+-------------------------------------------------- */
 function loadTheme() {
   const saved = localStorage.getItem('tos_theme') || 'light';
   document.body.dataset.theme = saved;
@@ -203,26 +169,6 @@ function bindThemeToggle() {
     localStorage.setItem('tos_theme', next);
     updateThemeIcon(next);
   });
-}
-
-/* --------------------------------------------------
-   Model dropdown
--------------------------------------------------- */
-function populateModelDropdown() {
-  const sel = $('#ai-model'); if (!sel) return;
-  sel.innerHTML = '';
-  const models = MODEL_CATALOG[state.ai.provider] || [];
-  models.forEach(m => {
-    const opt = el('option', { value: m.id }, m.label);
-    if (state.ai.model === m.id) opt.selected = true;
-    sel.appendChild(opt);
-  });
-  // Default to first if current not in list
-  if (!models.find(m => m.id === state.ai.model) && models.length) {
-    state.ai.model = models[0].id;
-    sel.value = models[0].id;
-    saveAISettings();
-  }
 }
 
 /* --------------------------------------------------
@@ -241,28 +187,6 @@ function showWelcome(force = false) {
     close();
   };
   modal.onclick = (e) => { if (e.target === modal) close(); };
-}
-
-/* --------------------------------------------------
-   Progress overlay
--------------------------------------------------- */
-function showProgress(current, total, sub = 'Generating…') {
-  const overlay = $('#progress-overlay'); if (!overlay) return;
-  overlay.hidden = false; overlay.style.display = ''; overlay.removeAttribute('aria-hidden');
-  const p = total > 0 ? Math.round((current / total) * 100) : 0;
-  $('#progress-percent').textContent = p + '%';
-  $('#progress-sub').textContent = sub;
-  $('#progress-detail').textContent = `Item ${current} of ${total}`;
-  const circle = $('#progress-circle');
-  if (circle) {
-    const circumference = 2 * Math.PI * 20;
-    circle.style.strokeDasharray = String(circumference);
-    circle.style.strokeDashoffset = String(circumference - (p / 100) * circumference);
-  }
-}
-function hideProgress() {
-  const overlay = $('#progress-overlay'); if (!overlay) return;
-  overlay.hidden = true; overlay.style.display = 'none'; overlay.setAttribute('aria-hidden', 'true');
 }
 
 /* --------------------------------------------------
@@ -430,19 +354,18 @@ function computeTOS() {
 }
 function recomputeTOS() { computeTOS(); renderTOS(); }
 
-function renderTOS() {
-  const container = $('#tos-container'); if (!container) return;
-  if (!state.tos) { container.innerHTML = ''; return; }
-  const t = state.tos;
-
-  // Build item-number assignment per (Bloom, Coverage) cell
+/* Build item-number assignment per (Bloom, Coverage) cell */
+function computeAssignment(t) {
   const totalCovItems = t.coverage.reduce((s, x) => s + (x.items || 0), 0);
   const assignment = {};
   BLOOM_LEVELS.forEach(b => {
     const bInfo = t.bloom.find(x => x.key === b.key);
     const range = bInfo.itemRange;
     assignment[b.key] = {};
-    if (!range || range.length === 0) { t.coverage.forEach((_, ci) => assignment[b.key][ci] = []); return; }
+    if (!range || range.length === 0) {
+      t.coverage.forEach((_, ci) => assignment[b.key][ci] = []);
+      return;
+    }
     const totalBloomItems = range[1] - range[0] + 1;
     let cursor = range[0];
     t.coverage.forEach((c, ci) => {
@@ -460,6 +383,14 @@ function renderTOS() {
       assignment[b.key][ci] = nums;
     });
   });
+  return assignment;
+}
+
+function renderTOS() {
+  const container = $('#tos-container'); if (!container) return;
+  if (!state.tos) { container.innerHTML = ''; return; }
+  const t = state.tos;
+  const assignment = computeAssignment(t);
 
   const table = el('table');
   const thead = el('thead');
@@ -568,394 +499,210 @@ function renderTOS() {
 }
 
 /* --------------------------------------------------
-   Question generation
+   Master Prompt Builder
 -------------------------------------------------- */
-function buildEmptyQuestions() {
+function buildMasterPrompt() {
   const t = state.tos || computeTOS();
-  const list = []; let n = 1;
-  t.bloom.forEach(b => {
-    for (let i = 0; i < b.itemCount; i++) {
-      const covIdx = pickCoverageForItem(n, t);
-      list.push({
-        id: uid(), itemNo: n, bloom: b.key, category: b.category,
-        coverageIndex: covIdx,
-        coverageTitle: t.coverage[covIdx] ? t.coverage[covIdx].title : '',
-        style: b.category === 'lower' ? 'A' : 'B',
-        chedCompetency: '', nleBlueprint: '',
-        stem: '', options: { A: '', B: '', C: '', D: '' }, answer: 'A',
-        rationale: '', status: 'empty'
-      });
-      n++;
-    }
-  });
-  state.questions = list;
-}
-function pickCoverageForItem(itemNo, t) {
-  let acc = 0;
-  for (let i = 0; i < t.coverage.length; i++) {
-    acc += t.coverage[i].items;
-    if (itemNo <= acc) return i;
-  }
-  return t.coverage.length - 1;
-}
 
-function renderQuestions() {
-  const wrap = $('#questions-container'); if (!wrap) return;
-  wrap.innerHTML = '';
-  if (state.questions.length === 0) {
-    wrap.appendChild(el('div', { class: 'alert alert-info' }, 'No question slots yet. Click "Recompute TOS" first, then "Generate All".'));
-    return;
-  }
-  state.questions.forEach((q, idx) => wrap.appendChild(renderQuestionCard(q, idx)));
-  refreshIcons();
-}
+  const coverageList = t.coverage
+    .map((c, i) => `  ${i + 1}. ${c.title} (${c.hours} hrs, ${c.items} items)`)
+    .join('\n');
 
-function renderQuestionCard(q, idx) {
-  const card = el('div', {
-    class: 'q-card ' + (q.status === 'error' ? 'error' : q.status === 'generating' ? 'generating' : q.status === 'empty' ? 'empty' : '')
-  });
-  const meta = el('div', { class: 'q-meta' });
-  meta.appendChild(el('span', { class: 'tag tag-item' }, 'Item ' + q.itemNo));
-  meta.appendChild(el('span', { class: 'tag tag-bloom' }, q.bloom));
-  meta.appendChild(el('span', { class: 'tag ' + (q.category === 'higher' ? 'tag-higher' : 'tag-lower') }, q.category === 'higher' ? 'Higher-Order' : 'Lower-Order'));
-  meta.appendChild(el('span', { class: 'tag' }, 'Style ' + q.style));
-  if (q.coverageTitle) meta.appendChild(el('span', { class: 'tag tag-coverage' }, q.coverageTitle));
-  card.appendChild(meta);
+  const bloomDist = BLOOM_LEVELS
+    .map(b => `  - ${b.key}: ${state.bloom[b.key]}% (${t.bloom.find(x => x.key === b.key).itemCount} items)`)
+    .join('\n');
 
-  card.appendChild(el('div', { class: 'q-stem', contenteditable: 'true',
-    oninput: (e) => { q.stem = e.target.textContent; persistProject(); }
-  }, q.stem || '[Stem not yet generated]'));
+  const chList = (state.chedCompetencies?.core_competency_areas || [])
+    .map(c => `  - ${c.code} — ${c.name}`)
+    .join('\n');
 
-  const opts = el('div', { class: 'q-options' });
-  ['A', 'B', 'C', 'D'].forEach(letter => {
-    const opt = el('div', { class: 'q-option' });
-    opt.appendChild(el('span', { class: 'letter' }, letter + '.'));
-    opt.appendChild(el('span', {
-      contenteditable: 'true',
-      oninput: (e) => { q.options[letter] = e.target.textContent; persistProject(); }
-    }, q.options[letter] || ''));
-    opts.appendChild(opt);
-  });
-  card.appendChild(opts);
+  const nleList = (state.nleBlueprint?.exam_parts || [])
+    .map(p => `  - ${p.code} — ${p.name}: ${p.description}`)
+    .join('\n');
 
-  const ans = el('div', { class: 'q-answer-row' });
-  ans.appendChild(el('label', {}, 'Answer'));
-  const ansSel = el('select', { onchange: (e) => { q.answer = e.target.value; persistProject(); } });
-  ['A', 'B', 'C', 'D'].forEach(L => {
-    const o = el('option', { value: L }, L);
-    if (q.answer === L) o.selected = true;
-    ansSel.appendChild(o);
-  });
-  ans.appendChild(ansSel);
+  const termLabel = state.term === 'MIDTERM' ? 'Midterm' : 'Final Term';
 
-  ans.appendChild(el('label', {}, 'CHED'));
-  const chedSel = el('select', { onchange: (e) => { q.chedCompetency = e.target.value; persistProject(); } });
-  chedSel.appendChild(el('option', { value: '' }, '— select —'));
-  (state.chedCompetencies.core_competency_areas || []).forEach(c => {
-    const val = c.code + ' — ' + c.name;
-    const o = el('option', { value: val }, val);
-    if (q.chedCompetency === val) o.selected = true;
-    chedSel.appendChild(o);
-  });
-  ans.appendChild(chedSel);
+  return `# ROLE
 
-  ans.appendChild(el('label', {}, 'NLE'));
-  const nleSel = el('select', { onchange: (e) => { q.nleBlueprint = e.target.value; persistProject(); } });
-  nleSel.appendChild(el('option', { value: '' }, '— select —'));
-  (state.nleBlueprint.exam_parts || []).forEach(p => {
-    const val = p.code + ' — ' + p.name;
-    const o = el('option', { value: val }, val);
-    if (q.nleBlueprint === val) o.selected = true;
-    nleSel.appendChild(o);
-  });
-  ans.appendChild(nleSel);
-  card.appendChild(ans);
+You are an expert Philippine Nursing Licensure Examination (NLE) item writer and nursing educator with 15+ years of experience. You write board-exam-quality multiple-choice questions aligned with:
 
-  const rat = el('div', { class: 'q-rationale' });
-  rat.appendChild(el('div', { class: 'q-rationale-label' }, [
-    el('i', { 'data-lucide': 'lightbulb' }), document.createTextNode(' Rationale')
-  ]));
-  rat.appendChild(el('div', {
-    contenteditable: 'true',
-    oninput: (e) => { q.rationale = e.target.textContent; persistProject(); }
-  }, q.rationale || '[No rationale yet]'));
-  card.appendChild(rat);
+- CHED CMO No. 15 s. 2017 (Philippine Nursing Education Curriculum)
+- PRC Board of Nursing Resolution No. 10 s. 2025 (Enhanced Table of Specifications for the NLE)
+- Revised Bloom's Taxonomy (Remembering → Creating)
+- NLE question conventions (client-centered scenarios, 4 options, plausible distractors)
 
-  const actions = el('div', { class: 'q-card-actions' });
-  actions.appendChild(el('button', {
-    class: 'btn btn-sm btn-ghost',
-    onclick: () => generateOneTemplate(q, idx)
-  }, '⚡ Regenerate (Template)'));
-  if (state.ai.enabled) {
-    actions.appendChild(el('button', {
-      class: 'btn btn-sm btn-secondary',
-      onclick: () => generateOneAI(q, idx)
-    }, '🤖 Regenerate (AI)'));
-  }
-  card.appendChild(actions);
+# EXAM CONTEXT
 
-  return card;
-}
+- **Subject:** ${state.subject || '[Enter Subject]'}
+- **Term:** ${termLabel}
+- **Institution:** ${state.institution || '[Enter Institution]'}
+- **Exam Title:** ${state.examTitle || termLabel + ' Exam'}
+- **Total Items:** ${t.totalItems}
+- **Total Hours Taught:** ${t.totalHours}
 
-/* --------------------------------------------------
-   Template generation
--------------------------------------------------- */
-function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+# COVERAGE AREAS
 
-function fillPlaceholders(template, q) {
-  const cov = q.coverageTitle || 'the topic';
-  const replacements = {
-    '{age}': String(20 + Math.floor(Math.random() * 50)),
-    '{structure}': cov, '{term}': cov, '{definition}': cov, '{description}': cov,
-    '{concept}': cov, '{purpose}': 'assessment', '{function}': 'normal function',
-    '{symptom}': 'a related complaint', '{finding}': 'an assessment finding',
-    '{condition}': cov, '{procedure}': 'the nursing assessment',
-    '{tool}': 'the appropriate instrument', '{system}': cov,
-    '{structure|function}': cov, '{structure|process}': cov, '{tool|structure|term}': cov,
-    '{normal|abnormal}': 'normal', '{care plan|teaching plan|discharge plan}': 'care plan',
-    '{nursing intervention|teaching strategy}': 'nursing intervention',
-    '{care plan|community program}': 'care plan', '{population}': 'the target population',
-    '{barrier}': 'a learning barrier', '{chief_complaint}': 'a related complaint',
-    '{complaint}': 'a related complaint', '{data}': 'assessment data',
-    '{findings}': 'assessment findings', '{age_group}': 'adult',
-    '{phenomenon}': 'the observed finding', '{topic}': cov
-  };
-  let out = template;
-  for (const [k, v] of Object.entries(replacements)) out = out.split(k).join(v);
-  return out.replace(/\{[^}]+\}/g, cov);
-}
+${coverageList}
 
-function generateOneTemplate(q, idx) {
-  const tpls = state.bloomTemplates.levels[q.bloom]?.stem_templates || [];
-  q.stem = tpls.length ? fillPlaceholders(pick(tpls), q) : '[No template available]';
-  const cov = q.coverageTitle || 'the topic';
-  if (q.category === 'lower') {
-    q.options = { A: 'Unrelated option 1', B: cov + ' (correct)', C: 'Unrelated option 2', D: 'Unrelated option 3' };
-    q.answer = 'B';
-  } else {
-    q.options = {
-      A: 'Partial action — misses a key step',
-      B: 'Incorrect or unsafe action',
-      C: 'Correct, prioritized nursing action',
-      D: 'Delayed or inappropriate action'
-    };
-    q.answer = 'C';
-  }
-  q.rationale = `[Template-generated] Correct answer: ${q.answer}. This item tests ${q.bloom}-level thinking on "${cov}". Edit to add content-specific details.`;
-  q.status = 'done';
-  persistProject();
-  refreshQuestionCard(idx);
-}
+# BLOOM'S DISTRIBUTION (TARGET)
 
-/* --------------------------------------------------
-   AI generation — with retry + fallback
--------------------------------------------------- */
-async function generateOneAI(q, idx, silent = false) {
-  if (!state.ai.enabled || !state.ai.key) {
-    if (!silent) showToast('warning', 'AI not configured', 'Enable AI mode and enter an API key.');
-    return false;
-  }
-  q.status = 'generating';
-  refreshQuestionCard(idx);
+${bloomDist}
 
-  const prompt = buildPromptForQuestion(q);
-  const models = state.ai.provider === 'gemini'
-    ? ['gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3.1-flash-lite']
-    : ['gpt-4o-mini', 'gpt-4o'];
+# BLOOM'S LEVEL DEFINITIONS (follow strictly)
 
-  // Build ordered list: current model first, then fallbacks
-  const ordered = [state.ai.model, ...models.filter(m => m !== state.ai.model)];
+| Level | What the item asks students to do | Stem pattern |
+|-------|------------------------------------|--------------|
+| **Remembering** | Recall a fact, term, structure, or definition | "Which structure...", "Which term refers to...", "Which is a normal finding for..." |
+| **Understanding** | Explain, interpret, or classify a concept | "A patient reports... Which structure is involved?", "Which statement best explains..." |
+| **Applying** | Use a concept in a new but familiar situation | "Which tool is used to...", "Which technique best demonstrates...", "Which action should the nurse take to..." |
+| **Analyzing** | Break down information to interpret findings | "A [age]-year-old presents with [data]. What is the best interpretation?" |
+| **Evaluating** | Justify a decision or prioritize an action | "A client presents with [data]. What is the best nursing action?" |
+| **Creating** | Design, formulate, or plan something new | "Which care plan is most appropriate?", "Formulate a teaching plan for...", "Which discharge plan best addresses..." |
 
-  let lastError = null;
+# QUESTION FORMAT RULES
 
-  for (const model of ordered) {
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      try {
-        if (attempt > 1 || model !== ordered[0]) {
-          showProgress(0, 1, `Retrying with ${model} (attempt ${attempt})…`);
-          await sleep(attempt === 1 ? 1500 : 3000);
-        }
-        const text = state.ai.provider === 'gemini'
-          ? await callGemini(prompt, model)
-          : await callOpenAI(prompt, model);
-        const parsed = parseAIResponse(text, q);
-        if (parsed) {
-          Object.assign(q, parsed);
-          q.status = 'done';
-          persistProject();
-          refreshQuestionCard(idx);
-          return true;
-        }
-      } catch (err) {
-        lastError = err;
-        console.warn(`[AI] ${model} attempt ${attempt} failed:`, err.message);
-        if (!isRetryableError(err)) break;
-      }
-    }
-  }
+1. **Stem:**
+   - Lower-order (Remembering, Understanding, Applying): short, direct questions (1–2 sentences)
+   - Higher-order (Analyzing, Evaluating, Creating): clinical scenario stems with age, sex, chief complaint, and assessment data
 
-  q.status = 'error';
-  q.rationale = lastError
-    ? `AI failed after retries. Last error: ${lastError.message}`
-    : 'AI returned an unparseable response.';
-  persistProject();
-  refreshQuestionCard(idx);
-  return false;
-}
+2. **Options:**
+   - Exactly **4 options (A, B, C, D)**
+   - Lower-order: short phrases (3–10 words)
+   - Higher-order: full sentences (10–20 words) describing interpretations or actions
+   - **Never use "All of the above" or "None of the above"**
+   - Distractors must be **plausible to a student but clearly wrong to an expert**
 
-function isRetryableError(err) {
-  const msg = (err.message || '').toLowerCase();
-  return msg.includes('503') || msg.includes('429') || msg.includes('unavailable')
-      || msg.includes('overload') || msg.includes('high demand') || msg.includes('timeout');
-}
+3. **Correct answer distribution:**
+   - Roughly balanced across A, B, C, D
+   - No single letter more than 30% of items
 
-async function generateAllAI() {
-  if (!state.ai.enabled || !state.ai.key) {
-    showToast('warning', 'AI not configured', 'Enable AI mode and enter an API key first.');
-    return;
-  }
-  if (state.aiGeneration.running) return;
+4. **Language:**
+   - Use **nursing terminology** correctly (medical terms, anatomical terms, nursing process steps)
+   - Match NLE style: formal, precise, client-centered
+   - Prefer **Filipino names, settings, and cultural context** where applicable (e.g., barangay health centers, DOH programs, Philippine epidemiology)
 
-  const pending = state.questions.filter(q => q.status !== 'done');
-  if (pending.length === 0) {
-    showToast('info', 'Nothing to generate', 'All items are already generated.');
-    return;
-  }
+5. **Rationale (for every item):**
+   - 3–6 sentences
+   - First sentence: **state the correct answer and why it's correct**
+   - Following sentences: **explain why each distractor is wrong**
 
-  state.aiGeneration = { running: true, cancelled: false, current: 0, total: pending.length };
-  showProgress(0, pending.length, 'Starting AI generation…');
+6. **Tags (for every item):**
+   - CHED competency (from the list below)
+   - NLE blueprint domain (from the list below)
+   - Coverage area
+   - Bloom's level
 
-  let success = 0;
-  for (let i = 0; i < state.questions.length; i++) {
-    if (state.aiGeneration.cancelled) break;
-    const q = state.questions[i];
-    if (q.status === 'done') continue;
+# CHED CORE COMPETENCY AREAS (pick one per item)
 
-    state.aiGeneration.current++;
-    showProgress(state.aiGeneration.current - 1, pending.length, `Generating item ${q.itemNo}…`);
+${chList || '  - CC-01 — Safe, Quality Nursing Care\n  - CC-02 — Management of Resources and Environment\n  - CC-03 — Health Education\n  - CC-04 — Legal Responsibility and Accountability\n  - CC-05 — Ethico-Moral Responsibility\n  - CC-06 — Personal and Professional Development\n  - CC-07 — Quality Improvement\n  - CC-08 — Research\n  - CC-09 — Records Management\n  - CC-10 — Communication\n  - CC-11 — Collaboration and Teamwork'}
 
-    const ok = await generateOneAI(q, i, true);
-    if (ok) success++;
+# NLE BLUEPRINT DOMAINS (pick one per item)
 
-    showProgress(state.aiGeneration.current, pending.length, `Item ${q.itemNo} complete`);
+${nleList || '  - NP-I — Nursing Practice I (Community Health)\n  - NP-II — Nursing Practice II (Mother and Child)\n  - NP-III — Nursing Practice III (Physiologic & Psychosocial Alterations, Part A)\n  - NP-IV — Nursing Practice IV (Physiologic & Psychosocial Alterations, Part B)\n  - NP-V — Nursing Practice V (Psychiatric/Mental Health, Older Adults)'}
 
-    // Small delay between items to avoid rate limits
-    await sleep(600);
-  }
+# OUTPUT FORMAT
 
-  const wasCancelled = state.aiGeneration.cancelled;
-  state.aiGeneration.running = false;
-  hideProgress();
+Return your response as a **valid JSON array** with this exact structure. No prose, no markdown fences, just JSON:
 
-  if (wasCancelled) showToast('warning', 'Generation cancelled', `Completed ${success} of ${pending.length} items.`);
-  else if (success === pending.length) showToast('success', 'AI generation complete', `Generated ${success} items.`);
-  else showToast('warning', 'Partial success', `${success} of ${pending.length} items generated. Retry the rest.`);
-}
-
-function bindProgressCancel() {
-  const btn = $('#btn-cancel-ai'); if (!btn) return;
-  btn.addEventListener('click', () => {
-    state.aiGeneration.cancelled = true;
-    showToast('info', 'Cancelling…', 'Stopping after current item.');
-  });
-}
-
-function buildPromptForQuestion(q) {
-  const cov = q.coverageTitle || 'the topic';
-  return `You are a Philippine nursing licensure exam (NLE) item writer.
-
-Generate ONE multiple-choice question aligned with:
-- Subject: ${state.subject}
-- Term: ${state.term}
-- Coverage area: ${cov}
-- Revised Bloom's Taxonomy level: ${q.bloom} (${q.category}-order)
-- Question style: ${q.style === 'A' ? 'short recall/understanding' : 'clinical scenario / application'}
-- CHED CMO 15 s. 2017 aligned
-- PRC BON Res. No. 10 s. 2025 (Enhanced TOS) aligned
-
-Rules:
-- Exactly 4 options (A, B, C, D).
-- For lower-order: short-phrase options.
-- For higher-order: full-sentence options, NLE scenario style.
-- No "all of the above" or "none of the above".
-- One best answer only.
-- Distractors must be plausible.
-
-Return ONLY valid JSON (no prose, no markdown):
-{
-  "stem": "...",
-  "options": { "A": "...", "B": "...", "C": "...", "D": "..." },
-  "answer": "A|B|C|D",
-  "rationale": "3-6 sentences.",
-  "ched_competency": "CC-XX — Name",
-  "nle_blueprint": "NP-X — Name"
-}`;
-}
-
-async function callGemini(prompt, model) {
-  const useModel = model || state.ai.model || 'gemini-3.6-flash';
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${useModel}:generateContent?key=${state.ai.key}`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { responseMimeType: 'application/json' }
-    })
-  });
-  if (!res.ok) throw new Error('Gemini ' + res.status + ': ' + await res.text());
-  const data = await res.json();
-  return data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-}
-
-async function callOpenAI(prompt, model) {
-  const useModel = model || state.ai.model || 'gpt-4o-mini';
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + state.ai.key
+\`\`\`json
+[
+  {
+    "item_no": 1,
+    "coverage_area": "EXACT coverage area name",
+    "bloom_level": "Remembering | Understanding | Applying | Analyzing | Evaluating | Creating",
+    "ched_competency": "CC-XX — Name",
+    "nle_blueprint": "NP-X — Name",
+    "stem": "...",
+    "options": {
+      "A": "...",
+      "B": "...",
+      "C": "...",
+      "D": "..."
     },
-    body: JSON.stringify({
-      model: useModel,
-      messages: [
-        { role: 'system', content: 'You output only valid JSON.' },
-        { role: 'user', content: prompt }
-      ],
-      response_format: { type: 'json_object' }
-    })
-  });
-  if (!res.ok) throw new Error('OpenAI ' + res.status + ': ' + await res.text());
-  const data = await res.json();
-  return data?.choices?.[0]?.message?.content || '';
-}
+    "answer": "A|B|C|D",
+    "rationale": "3–6 sentences. First sentence states the correct answer and why. Following sentences explain why each distractor is wrong."
+  }
+]
+\`\`\`
 
-function parseAIResponse(text, q) {
-  try {
-    const clean = text.trim().replace(/^```json\s*/i, '').replace(/```$/i, '').trim();
-    const obj = JSON.parse(clean);
-    if (!obj.stem || !obj.options) return null;
-    return {
-      stem: obj.stem,
-      options: { A: obj.options.A || '', B: obj.options.B || '', C: obj.options.C || '', D: obj.options.D || '' },
-      answer: (obj.answer || 'A').toUpperCase().slice(0, 1),
-      rationale: obj.rationale || '',
-      chedCompetency: obj.ched_competency || q.chedCompetency,
-      nleBlueprint: obj.nle_blueprint || q.nleBlueprint
-    };
-  } catch { return null; }
-}
+# ITEM-LEVEL REQUIREMENTS
 
-function refreshQuestionCard(idx) {
-  const wrap = $('#questions-container');
-  const oldCard = wrap.children[idx];
-  if (oldCard) wrap.replaceChild(renderQuestionCard(state.questions[idx], idx), oldCard);
-  else renderQuestions();
-  refreshIcons();
+- **item_no:** Sequential from 1 to ${t.totalItems}
+- **coverage_area:** Must exactly match one of the provided coverage areas
+- **bloom_level:** One of the 6 levels — match the target distribution
+- **ched_competency:** One of the 11 CHED Core Competency Areas
+- **nle_blueprint:** One of NP-I through NP-V
+- **stem:** The question
+- **options:** Object with A, B, C, D
+- **answer:** Single letter (A, B, C, or D)
+- **rationale:** String, 3–6 sentences
+
+# TARGET DISTRIBUTION PER COVERAGE AREA
+
+Use the coverage areas above as your guides. Generate items so that:
+- Each coverage area produces the item count shown
+- Each Bloom's level produces the count shown
+- The two distributions are satisfied simultaneously (i.e., each coverage area has a mix of Bloom's levels)
+
+# VALIDATION CHECKLIST (verify before outputting)
+
+- [ ] Total items = ${t.totalItems}
+- [ ] Bloom's distribution matches target exactly
+- [ ] Every item has exactly 4 options
+- [ ] Every item has exactly 1 correct answer
+- [ ] No "all of the above" or "none of the above"
+- [ ] Answer letters are balanced (no letter > 30%)
+- [ ] Every rationale explains why the 3 distractors are wrong
+- [ ] No duplicate stems or overlapping concepts
+- [ ] All items use nursing terminology correctly
+- [ ] Coverage areas used match the list provided
+
+# BATCHING NOTE
+
+If ${t.totalItems} items is too long for one response, generate in batches of 10–15. For each batch, include:
+"Generate items [X–Y] of ${t.totalItems}. Do not repeat any concept already covered in previous items."
+
+# BEGIN
+
+Generate all ${t.totalItems} items now. Output ONLY the JSON array.`;
 }
 
 /* --------------------------------------------------
-   Export
+   Prompt modal
+-------------------------------------------------- */
+function openPromptModal() {
+  const modal = $('#prompt-modal'); if (!modal) return;
+  const ta = $('#prompt-textarea');
+  ta.value = buildMasterPrompt();
+  modal.hidden = false; modal.style.display = ''; modal.removeAttribute('aria-hidden');
+  refreshIcons();
+
+  const close = () => { modal.hidden = true; modal.style.display = 'none'; modal.setAttribute('aria-hidden', 'true'); };
+  $('#btn-close-prompt').onclick = close;
+  modal.onclick = (e) => { if (e.target === modal) close(); };
+
+  $('#btn-prompt-copy').onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(ta.value);
+      showToast('success', 'Prompt copied', 'Paste into DeepSeek to generate questions.');
+    } catch {
+      ta.select();
+      document.execCommand('copy');
+      showToast('success', 'Prompt copied', 'Paste into DeepSeek to generate questions.');
+    }
+  };
+  $('#btn-prompt-download').onclick = () => {
+    download(
+      `DeepSeek_Prompt_${sanitizeFilename(state.subject)}_${state.term}.txt`,
+      ta.value,
+      'text/plain'
+    );
+    showToast('success', 'Prompt downloaded', 'Saved as .txt');
+  };
+}
+
+/* --------------------------------------------------
+   Export — TOS .docx
 -------------------------------------------------- */
 function makeDocxParagraph(text, opts = {}) {
   const { Paragraph, TextRun, AlignmentType } = docx;
@@ -972,12 +719,17 @@ function makeDocxParagraph(text, opts = {}) {
 async function exportTOSDocx() {
   const { Document, Packer, Paragraph, Table, TableRow, TableCell, WidthType, AlignmentType, TextRun } = docx;
   const t = state.tos || computeTOS();
+  const assignment = computeAssignment(t);
+
   const headerParas = [
     makeDocxParagraph(state.institution || '', { bold: true, align: AlignmentType.CENTER }),
     makeDocxParagraph('TABLE OF SPECIFICATIONS', { bold: true, size: 28, align: AlignmentType.CENTER }),
-    makeDocxParagraph(`${state.subject} — ${state.term === 'MIDTERM' ? 'Midterm' : 'Final Term'}`, { italic: true, align: AlignmentType.CENTER }),
+    makeDocxParagraph(`${state.subject} — ${state.term === 'MIDTERM' ? 'Midterm' : 'Final Term'}`, {
+      italic: true, align: AlignmentType.CENTER
+    }),
     new Paragraph({ text: '' })
   ];
+
   const cell = (text, opts = {}) => new TableCell({
     width: { size: opts.width || 10, type: WidthType.PERCENTAGE },
     children: [new Paragraph({
@@ -985,40 +737,77 @@ async function exportTOSDocx() {
       children: [new TextRun({ text: String(text), bold: !!opts.bold, size: 18 })]
     })]
   });
+
   const bodyRows = [];
-  bodyRows.push(new TableRow({ children: [
-    cell('Coverage', { bold: true, width: 18 }),
-    cell('No. of Hours', { bold: true, width: 8 }),
-    cell('% over Total Hours', { bold: true, width: 9 }),
-    cell('Levels of Thinking', { bold: true, width: 45 }),
-    cell('', { width: 5 }), cell('', { width: 5 }), cell('', { width: 5 }),
-    cell('', { width: 5 }), cell('', { width: 5 }),
-    cell('Total No. of Items', { bold: true, width: 8 }),
-    cell('% over Total Items', { bold: true, width: 9 })
-  ]}));
-  bodyRows.push(new TableRow({ children: [
-    cell(''), cell(''), cell(''),
-    cell('Remembering', { bold: true }), cell('Understanding', { bold: true }),
-    cell('Applying', { bold: true }), cell('Analyzing', { bold: true }),
-    cell('Evaluating', { bold: true }), cell('Creating', { bold: true }),
-    cell(''), cell('')
-  ]}));
-  t.coverage.forEach(c => {
+
+  bodyRows.push(new TableRow({
+    children: [
+      cell('Coverage', { bold: true, width: 18 }),
+      cell('No. of Hours', { bold: true, width: 8 }),
+      cell('% over Total Hours', { bold: true, width: 9 }),
+      cell('Levels of Thinking', { bold: true, width: 45 }),
+      cell('', { width: 5 }), cell('', { width: 5 }), cell('', { width: 5 }),
+      cell('', { width: 5 }), cell('', { width: 5 }),
+      cell('Total No. of Items', { bold: true, width: 8 }),
+      cell('% over Total Items', { bold: true, width: 9 })
+    ]
+  }));
+
+  bodyRows.push(new TableRow({
+    children: [
+      cell(''), cell(''), cell(''),
+      cell('Remembering', { bold: true }), cell('Understanding', { bold: true }),
+      cell('Applying', { bold: true }), cell('Analyzing', { bold: true }),
+      cell('Evaluating', { bold: true }), cell('Creating', { bold: true }),
+      cell(''), cell('')
+    ]
+  }));
+
+  t.coverage.forEach((c, ci) => {
     const cells = [
       cell(c.title, { align: AlignmentType.LEFT }),
       cell(c.hours),
       cell(c.percentHours + '%')
     ];
     BLOOM_LEVELS.forEach(b => {
-      const bInfo = t.bloom.find(x => x.key === b.key);
-      const r = bInfo.itemRange;
-      cells.push(cell(r && r.length ? `${r[0]}–${r[1]}` : '—'));
+      const nums = assignment[b.key][ci] || [];
+      cells.push(cell(nums.length ? nums.join(', ') : '—'));
     });
     cells.push(cell(c.items));
     cells.push(cell(c.percentItems + '%'));
     bodyRows.push(new TableRow({ children: cells }));
   });
+
+  const placeRow = [cell('Item Placement', { bold: true, align: AlignmentType.LEFT }), cell(''), cell('')];
+  BLOOM_LEVELS.forEach(b => {
+    const bInfo = t.bloom.find(x => x.key === b.key);
+    const r = bInfo.itemRange;
+    placeRow.push(cell(r && r.length ? `${r[0]}–${r[1]}` : '—'));
+  });
+  placeRow.push(cell(t.totalItems));
+  placeRow.push(cell('100%'));
+  bodyRows.push(new TableRow({ children: placeRow }));
+
+  const totalRow = [cell('TOTAL', { bold: true, align: AlignmentType.LEFT }), cell(t.totalHours, { bold: true }), cell('100%', { bold: true })];
+  BLOOM_LEVELS.forEach(b => {
+    const bInfo = t.bloom.find(x => x.key === b.key);
+    totalRow.push(cell(bInfo.itemCount, { bold: true }));
+  });
+  totalRow.push(cell(t.totalItems, { bold: true }));
+  totalRow.push(cell('100%', { bold: true }));
+  bodyRows.push(new TableRow({ children: totalRow }));
+
+  const pctRow = [cell('Percentage', { bold: true, align: AlignmentType.LEFT }), cell(''), cell('')];
+  BLOOM_LEVELS.forEach(b => {
+    const bInfo = t.bloom.find(x => x.key === b.key);
+    pctRow.push(cell(bInfo.percent + '%', { bold: true }));
+  });
+  pctRow.push(cell(''));
+  pctRow.push(cell(''));
+  bodyRows.push(new TableRow({ children: pctRow }));
+
   const table = new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: bodyRows });
+
   const sigParas = [new Paragraph({ text: '' })];
   const pushSig = (label, value) => {
     if (!value) return;
@@ -1033,32 +822,42 @@ async function exportTOSDocx() {
   pushSig('Reviewed by:', state.signatories.reviewed2);
   pushSig('Reviewed by:', state.signatories.reviewed3);
   pushSig('Approved by:', state.signatories.approved);
+
   const doc = new Document({ sections: [{ children: [...headerParas, table, ...sigParas] }] });
   const blob = await Packer.toBlob(doc);
   saveAs(blob, `TOS_${sanitizeFilename(state.subject)}_${state.term}.docx`);
 }
 
-async function exportExamDocx() {
+/* --------------------------------------------------
+   Export — Blank Exam Shell
+-------------------------------------------------- */
+async function exportExamShellDocx() {
   const { Document, Packer, Paragraph, AlignmentType } = docx;
+
   const paras = [
     makeDocxParagraph(state.institution || '', { bold: true, align: AlignmentType.CENTER }),
     makeDocxParagraph('Name: _______________________________   Score: ____________', {}),
     makeDocxParagraph('Year and Section / Group: _______________________   Date: ____________', {}),
     new Paragraph({ text: '' }),
-    makeDocxParagraph(`${state.subject}`, { bold: true, align: AlignmentType.CENTER, size: 24 }),
-    makeDocxParagraph(`${state.examTitle || (state.term === 'MIDTERM' ? 'Midterm Exam' : 'Final Term Exam')}`, { bold: true, align: AlignmentType.CENTER, size: 24 }),
+    makeDocxParagraph(`${state.subject || ''}`, { bold: true, align: AlignmentType.CENTER, size: 24 }),
+    makeDocxParagraph(`${state.examTitle || (state.term === 'MIDTERM' ? 'Midterm Exam' : 'Final Term Exam')}`, {
+      bold: true, align: AlignmentType.CENTER, size: 24
+    }),
     new Paragraph({ text: '' }),
     makeDocxParagraph('Direction:', { bold: true }),
-    makeDocxParagraph('Write your Name, year, and section in the provided space above. Read each question and choice carefully. Choose and ENCIRCLE/SHADE the letter of the correct answer on the provided answer sheet. Use only black or blue inked ball pen, and NO ERASURES ALLOWED.', { size: 22 }),
+    makeDocxParagraph(
+      'Write your Name, year, and section in the provided space above. Read each question and choice carefully. ' +
+      'Choose and ENCIRCLE/SHADE the letter of the correct answer on the provided answer sheet. ' +
+      'Use only black or blue inked ball pen, and NO ERASURES ALLOWED.',
+      { size: 22 }
+    ),
+    new Paragraph({ text: '' }),
+    makeDocxParagraph('[PASTE YOUR QUESTIONS HERE]', { italic: true, align: AlignmentType.CENTER }),
+    new Paragraph({ text: '' }),
+    makeDocxParagraph('>>END OF EXAMINATION<<', { bold: true, align: AlignmentType.CENTER }),
     new Paragraph({ text: '' })
   ];
-  state.questions.forEach(q => {
-    paras.push(makeDocxParagraph(`${q.itemNo}. ${q.stem || '[stem pending]'}`, {}));
-    ['A', 'B', 'C', 'D'].forEach(L => paras.push(makeDocxParagraph(`   ${L}. ${q.options[L] || ''}`, {})));
-    paras.push(new Paragraph({ text: '' }));
-  });
-  paras.push(makeDocxParagraph('>>END OF EXAMINATION<<', { bold: true, align: AlignmentType.CENTER }));
-  paras.push(new Paragraph({ text: '' }));
+
   const pushSig = (label, value) => {
     if (!value) return;
     const [name, role] = value.split('—').map(s => (s || '').trim());
@@ -1072,37 +871,14 @@ async function exportExamDocx() {
   pushSig('Noted by:', state.signatories.reviewed2);
   pushSig('Noted by:', state.signatories.reviewed3);
   pushSig('Approved by:', state.signatories.approved);
-  const doc = new Document({ sections: [{ children: paras }] });
-  const blob = await Packer.toBlob(doc);
-  saveAs(blob, `Exam_${sanitizeFilename(state.subject)}_${state.term}.docx`);
-}
 
-async function exportAnswerKeyDocx() {
-  const { Document, Packer, Paragraph, AlignmentType } = docx;
-  const paras = [
-    makeDocxParagraph('ANSWER KEY WITH RATIONALES', { bold: true, align: AlignmentType.CENTER, size: 26 }),
-    makeDocxParagraph(`${state.subject} — ${state.term === 'MIDTERM' ? 'Midterm' : 'Final Term'}`, { italic: true, align: AlignmentType.CENTER }),
-    new Paragraph({ text: '' })
-  ];
-  state.questions.forEach(q => {
-    paras.push(makeDocxParagraph(`${q.itemNo}. Answer: ${q.answer}   [${q.bloom} · ${q.coverageTitle}]`, { bold: true }));
-    paras.push(makeDocxParagraph(`Stem: ${q.stem || ''}`, {}));
-    ['A', 'B', 'C', 'D'].forEach(L => {
-      const marker = L === q.answer ? '  ✔' : '';
-      paras.push(makeDocxParagraph(`   ${L}. ${q.options[L] || ''}${marker}`, {}));
-    });
-    if (q.chedCompetency) paras.push(makeDocxParagraph(`CHED: ${q.chedCompetency}`, { italic: true, size: 20 }));
-    if (q.nleBlueprint)   paras.push(makeDocxParagraph(`NLE: ${q.nleBlueprint}`, { italic: true, size: 20 }));
-    paras.push(makeDocxParagraph(`Rationale: ${q.rationale || ''}`, {}));
-    paras.push(new Paragraph({ text: '' }));
-  });
   const doc = new Document({ sections: [{ children: paras }] });
   const blob = await Packer.toBlob(doc);
-  saveAs(blob, `AnswerKey_${sanitizeFilename(state.subject)}_${state.term}.docx`);
+  saveAs(blob, `ExamShell_${sanitizeFilename(state.subject)}_${state.term}.docx`);
 }
 
 /* --------------------------------------------------
-   Save / load
+   Save / Load project
 -------------------------------------------------- */
 function serializeProject() {
   return {
@@ -1112,7 +888,7 @@ function serializeProject() {
     totalHours: state.totalHours, totalItems: state.totalItems,
     institution: state.institution, examTitle: state.examTitle,
     coverage: state.coverage, bloom: state.bloom,
-    signatories: state.signatories, questions: state.questions, tos: state.tos
+    signatories: state.signatories, tos: state.tos
   };
 }
 function restoreProject(data) {
@@ -1125,9 +901,12 @@ function restoreProject(data) {
   state.coverage = data.coverage || [];
   state.bloom = data.bloom || {};
   state.signatories = { ...state.signatories, ...(data.signatories || {}) };
-  state.questions = data.questions || [];
   state.tos = data.tos || null;
 }
+function loadProjectFromStorage() {
+  try { const saved = JSON.parse(localStorage.getItem('tos_project') || 'null'); if (saved) restoreProject(saved); } catch {}
+}
+function persistProject() { localStorage.setItem('tos_project', JSON.stringify(serializeProject())); }
 
 /* --------------------------------------------------
    Bindings
@@ -1167,58 +946,24 @@ function bindInputs() {
   });
 
   $('#btn-recompute-tos').addEventListener('click', () => {
-    recomputeTOS(); buildEmptyQuestions(); renderQuestions(); persistProject();
-    showToast('success', 'TOS recomputed', `${state.totalItems} item slots prepared.`);
+    recomputeTOS(); persistProject();
+    showToast('success', 'TOS recomputed', `${state.totalItems} items placed.`);
   });
   $('#btn-print-tos').addEventListener('click', () => window.print());
+
+  $('#btn-copy-prompt').addEventListener('click', openPromptModal);
+  $('#btn-copy-prompt-2').addEventListener('click', openPromptModal);
+
   $('#btn-export-tos-docx').addEventListener('click', async () => {
     try { await exportTOSDocx(); showToast('success', 'TOS exported', 'Saved as .docx'); }
     catch (err) { showToast('error', 'Export failed', err.message); }
   });
-
-  $('#btn-generate-all-template').addEventListener('click', () => {
-    if (state.questions.length === 0) buildEmptyQuestions();
-    let count = 0;
-    state.questions.forEach((q, i) => { if (q.status !== 'done') { generateOneTemplate(q, i); count++; } });
-    renderQuestions();
-    showToast('success', 'Template generation complete', `${count} item(s) generated.`);
-  });
-  $('#btn-generate-all-ai').addEventListener('click', () => {
-    if (state.questions.length === 0) buildEmptyQuestions();
-    generateAllAI();
-  });
-  $('#btn-clear-questions').addEventListener('click', () => {
-    if (confirm('Clear all generated questions?')) {
-      buildEmptyQuestions(); renderQuestions(); persistProject();
-      showToast('info', 'Questions cleared', 'All items reset to empty slots.');
-    }
-  });
-
-  $('#toggle-ai').addEventListener('change', e => {
-    state.ai.enabled = e.target.checked;
-    $('#ai-config').hidden = !state.ai.enabled;
-    $('#ai-config').style.display = state.ai.enabled ? '' : 'none';
-    saveAISettings(); renderQuestions();
-    showToast('info', 'AI mode ' + (e.target.checked ? 'enabled' : 'disabled'));
-  });
-  $('#ai-provider').addEventListener('change', e => {
-    state.ai.provider = e.target.value;
-    state.ai.model = MODEL_CATALOG[state.ai.provider][0].id;
-    populateModelDropdown(); saveAISettings();
-  });
-  $('#ai-key').addEventListener('input', e => { state.ai.key = e.target.value; saveAISettings(); });
-  $('#ai-model').addEventListener('change', e => { state.ai.model = e.target.value; saveAISettings(); });
-
   $('#btn-export-tos').addEventListener('click', async () => {
     try { await exportTOSDocx(); showToast('success', 'TOS downloaded', 'Saved as .docx'); }
     catch (err) { showToast('error', 'Export failed', err.message); }
   });
-  $('#btn-export-exam').addEventListener('click', async () => {
-    try { await exportExamDocx(); showToast('success', 'Exam downloaded', 'Saved as .docx'); }
-    catch (err) { showToast('error', 'Export failed', err.message); }
-  });
-  $('#btn-export-answerkey').addEventListener('click', async () => {
-    try { await exportAnswerKeyDocx(); showToast('success', 'Answer key downloaded', 'Saved as .docx'); }
+  $('#btn-export-exam-shell').addEventListener('click', async () => {
+    try { await exportExamShellDocx(); showToast('success', 'Exam shell downloaded', 'Paste your questions inside.'); }
     catch (err) { showToast('error', 'Export failed', err.message); }
   });
   $('#btn-export-json').addEventListener('click', () => {
@@ -1238,7 +983,7 @@ function bindInputs() {
       const data = JSON.parse(text);
       restoreProject(data);
       hydrateInputs(); renderCoverageTable(); renderBloomSliders();
-      recomputeTOS(); renderQuestions(); updateDashboard(); persistProject();
+      recomputeTOS(); updateDashboard(); persistProject();
       showToast('success', 'Project loaded', file.name);
     } catch (err) { showToast('error', 'Invalid project file', err.message); }
   });
@@ -1250,15 +995,6 @@ function bindInputs() {
   });
 
   $('#btn-help').addEventListener('click', () => showWelcome(true));
-  bindProgressCancel();
-
-  // Hydrate AI config
-  $('#toggle-ai').checked = state.ai.enabled;
-  $('#ai-config').hidden = !state.ai.enabled;
-  $('#ai-config').style.display = state.ai.enabled ? '' : 'none';
-  $('#ai-provider').value = state.ai.provider;
-  $('#ai-key').value = state.ai.key;
-  populateModelDropdown();
 }
 
 function hydrateInputs() {
@@ -1276,9 +1012,8 @@ function hydrateInputs() {
 }
 
 async function boot() {
-  forceHideOverlays();       // ensure overlays are hidden BEFORE anything else
+  forceHideOverlays();
   await loadDataFiles();
-  loadAISettings();
   loadTheme();
   initBloomDefaults();
   loadProjectFromStorage();
@@ -1287,7 +1022,6 @@ async function boot() {
   renderCoverageTable();
   renderBloomSliders();
   recomputeTOS();
-  renderQuestions();
   bindInputs();
   bindThemeToggle();
   updateDashboard();
